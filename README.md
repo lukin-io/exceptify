@@ -450,4 +450,4 @@ bundle install
 
 Copyright (c) 2005 Jamis Buck, released under the [MIT license](http://www.opensource.org/licenses/MIT).
 
-Maintainer: [Kevin McPhillips](https://github.com/kmcphillips)
+Inspired by the idea of: [Kevin M.](https://github.com/kmcphillips)
