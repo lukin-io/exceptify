@@ -1,0 +1,8 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 8.0.0"
+
+# Include any dependencies here that need to be specifically tested.
+gem "sidekiq", "7.1.0" # >= 7.1.5 for the conditional in sidekiq.rb to check parameter cardinality
+
+gemspec path: "../"
