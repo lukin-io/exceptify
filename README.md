@@ -1,453 +1,433 @@
 # Exception Notification
 
 [![Gem Version](https://badge.fury.io/rb/exception_notification.svg)](https://badge.fury.io/rb/exception_notification)
-[![Build Status](https://github.com/kmcphillips/exception_notification/actions/workflows/ci.yml/badge.svg)](https://github.com/kmcphillips/exception_notification/actions/workflows/ci.yml)
+[![Build Status](https://github.com/lukin-io/exceptify/actions/workflows/ci.yml/badge.svg)](https://github.com/lukin-io/exceptify/actions/workflows/ci.yml)
 
----
+`exception_notification` sends exception reports from Rails and Rack applications to the channels your team already watches: email, chat, webhooks, and monitoring tools.
 
-The Exception Notification gem provides a set of [notifiers](#notifiers) for sending notifications when errors occur in a Rack/Rails application. The built-in notifiers can deliver notifications by [email](docs/notifiers/email.md), [HipChat](docs/notifiers/hipchat.md), [Slack](docs/notifiers/slack.md), [Mattermost](docs/notifiers/mattermost.md), [Teams](docs/notifiers/teams.md), [IRC](docs/notifiers/irc.md), [Amazon SNS](docs/notifiers/sns.md), [Google Chat](docs/notifiers/google_chat.md), [Datadog](docs/notifiers/datadog.md) or via custom [WebHooks](docs/notifiers/webhook.md).
+This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify`, while keeping the existing gem name and public API compatible for applications that already use `exception_notification`.
 
-There's a [Railscast (2011) about Exception Notification](http://railscasts.com/episodes/104-exception-notifications-revised) you can see that may help you getting started.
+## Contents
 
+* [What It Does](#what-it-does)
+* [Compatibility](#compatibility)
+* [Installation](#installation)
+* [Rails Setup](#rails-setup)
+* [Common Workflows](#common-workflows)
+* [Notifiers](#notifiers)
+* [Noise Control](#noise-control)
+* [Background Jobs](#background-jobs)
+* [Rack and Sinatra](#rack-and-sinatra)
+* [Development](#development)
+* [License](#license)
 
-## Gem status
+## What It Does
 
-This gem is not under active development, but is maintained. There are more robust and modern solutions for exception handling. But this code was [extracted from Rails about 15+ years ago](https://github.com/rails/exception_notification) and still has lots of value for some applications.
+Exception Notification installs a Rack middleware that watches for unhandled exceptions during web requests and sends a notification with request, session, environment, backtrace, and optional application data.
 
+Use it when you want a small, self-hosted notification layer for exceptions without adopting a hosted error tracker.
 
-## Requirements
+It supports:
 
-* Ruby 3.2 or greater
-* If using Rails, version 7.1 or greater. (Sinatra or other Rack-based applications are supported.)
+* Rails integration through a generator and initializer.
+* Rack middleware configuration for Rails, Sinatra, and other Rack apps.
+* Built-in notifiers for email, Slack, Mattermost, Teams, IRC, Amazon SNS, Google Chat, Datadog, HipChat, and webhooks.
+* Manual reporting for rescued exceptions, background jobs, scripts, rake tasks, and runners.
+* Ignore rules, crawler filtering, per-notifier filtering, and repeated-error grouping.
 
+## Compatibility
 
-## Getting Started
+* Ruby 3.2 or newer.
+* Rails 7.1 or newer, including Rails 8.
+* Rack applications, including Sinatra.
 
-Add the following line to your application's Gemfile:
+The gem has a long history in the Rails ecosystem. The original code was extracted from Rails years ago, and this repository continues maintenance for modern Ruby and Rails versions.
+
+## Installation
+
+Add the gem to your application's `Gemfile`:
 
 ```ruby
 gem "exception_notification"
 ```
 
-### Using a local checkout
-
-When testing changes from a local checkout of this gem inside another Rails or Rack application, point that application's `Gemfile` at the local path:
-
-```ruby
-gem "exception_notification", path: "/Users/sesharim/Developer/other/exception_notification"
-```
-
-If both projects are in the same parent directory, a relative path is usually easier to share:
-
-```ruby
-gem "exception_notification", path: "../exception_notification"
-```
-
-Then install the bundle from the application that uses the gem:
+Install it:
 
 ```bash
 bundle install
 ```
 
-For a Rails API application, generate the initializer and configure the notifier you want to use:
-
-```bash
-bundle exec rails g exception_notification:install
-```
-
-The initializer should require the Rails integration:
+To use this maintained repository directly before a release is published to RubyGems:
 
 ```ruby
+gem "exception_notification", git: "https://github.com/lukin-io/exceptify.git"
+```
+
+For local gem development, point a test application at your checkout:
+
+```ruby
+gem "exception_notification", path: "../exceptify"
+```
+
+If the application should keep a Git source in its `Gemfile` while Bundler uses a local checkout, configure a local override from that application:
+
+```bash
+bundle config set local.exception_notification ../exceptify
+bundle install
+```
+
+## Rails Setup
+
+Generate the Rails initializer:
+
+```bash
+bundle exec rails generate exception_notification:install
+```
+
+The generated file is written to `config/initializers/exception_notification.rb`.
+
+Keep the gem available to every environment that loads the initializer. If you want notifications only in production, keep the gem outside a `production`-only bundle group and add an ignore rule for local environments.
+
+### Minimal Email Setup
+
+```ruby
+# config/initializers/exception_notification.rb
 require "exception_notification/rails"
+require "exception_notification/rake"
 
 ExceptionNotification.configure do |config|
   config.add_notifier :email, {
-    email_prefix: "[API ERROR] ",
-    sender_address: %{"Notifier" <notifier@example.com>},
-    exception_recipients: %w{exceptions@example.com}
+    email_prefix: "[#{Rails.env.upcase}] ",
+    sender_address: %("Exception Notifier" <notifier@example.com>),
+    exception_recipients: %w[exceptions@example.com]
   }
+
+  config.ignore_if do |_exception, _options|
+    Rails.env.local?
+  end
 end
 ```
 
-### Rails
+Email delivery uses your application's ActionMailer configuration. If emails do not send, check [ActionMailer configuration](docs/notifiers/email.md#actionmailer-configuration) first.
 
-In order to install ExceptionNotification as an [engine](https://api.rubyonrails.org/classes/Rails/Engine.html), just run the following command from the terminal:
+### Rails Runner Support
 
-```bash
-rails g exception_notification:install
-```
-
-This generates an initializer file, `config/initializers/exception_notification.rb` with some default configuration, which you should modify as needed.
-
-Make sure the gem is not listed solely under the `production` group in your `Gemfile`, since this initializer will be loaded regardless of environment. If you want it to only be enabled in production, you can add this to your configuration:
+If you want `rails runner` commands to report exceptions, load the Rails integration from `config/application.rb` below `Bundler.require`:
 
 ```ruby
-config.ignore_if do |exception, options|
-  !!Rails.env.local?
-end
-```
-
-The generated initializer file will include this require:
-```ruby
+# config/application.rb
 require "exception_notification/rails"
 ```
 
-which automatically adds the ExceptionNotification middleware to the Rails middleware stack. This middleware is what watches for unhandled exceptions from your Rails app (except for [background jobs](#background-jobs)) and notifies you when they occur.
+The initializer is too late for runner callbacks. You can still keep notifier configuration in `config/initializers/exception_notification.rb`.
 
-The generated file adds an `email` notifier:
+## Common Workflows
+
+### Send to Email and Slack
+
+Slack notifications require the `slack-notifier` gem:
 
 ```ruby
+gem "slack-notifier"
+```
+
+Then register both notifiers:
+
+```ruby
+ExceptionNotification.configure do |config|
   config.add_notifier :email, {
-    email_prefix: "[ERROR] ",
-    sender_address: %{"Notifier" <notifier@example.com>},
-    exception_recipients: %w{exceptions@example.com}
+    email_prefix: "[#{Rails.env.upcase}] ",
+    sender_address: %("Exception Notifier" <notifier@example.com>),
+    exception_recipients: %w[exceptions@example.com]
   }
-```
 
-**Note**: In order to enable delivery notifications by email, make sure you have [ActionMailer configured](docs/notifiers/email.md#actionmailer-configuration).
-
-
-#### Adding middleware manually
-
-Alternatively, if for some reason you don't want to `require "exception_notification/rails"`, you can manually add the middleware, like this:
-
-```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
-  email: {
-    email_prefix: "[PREFIX] ",
-    sender_address: %{"notifier" <notifier@example.com>},
-    exception_recipients: %w{exceptions@example.com}
-  }
-```
-
-This is the older way of configuring ExceptionNotification (which prior to version 4 was the _only_ way to configure it), and is still the way used in some of the examples.
-
-Options passed to the `ExceptionNotification::Rack` middleware in this way are translated to the equivalent configuration options for the `ExceptionNotification.configure` of configuring (compare to the [Rails](#rails) example above).
-
-
-### Rack/Sinatra
-
-In order to use ExceptionNotification with Sinatra, please take a look in the [example application](examples/sinatra).
-
-
-### Custom Data, e.g. Current User
-
-Save the current user in the `request` using a controller callback.
-
-```ruby
-class ApplicationController < ActionController::Base
-  before_action :prepare_exception_notifier
-
-  private
-
-  def prepare_exception_notifier
-    request.env["exception_notifier.exception_data"] = {
-      current_user: current_user
+  if (webhook_url = Rails.application.credentials.dig(:slack, :exceptions_webhook_url))
+    config.add_notifier :slack, {
+      webhook_url: webhook_url,
+      channel: "#exceptions",
+      additional_parameters: {
+        mrkdwn: true
+      }
     }
   end
 end
 ```
 
-The current user will show up in your email, in a new section titled "Data".
+### Attach Request Context
 
-```
-------------------------------- Data:
-
-* data: {:current_user=>
-  #<User:0x007ff03c0e5860
-   id: 3,
-   email: "jane.doe@example.com", # etc...
-```
-
-For more control over the display of custom data, see "Email notifier -> Options -> sections" below.
-
-
-### Filtering parameters
-
-Since the error notification contains the full request parameters, you may want to filter out sensitive information. The `filter_parameters` in Rails can be used to filter out sensitive information from the request parameters.
+Store application data in the request environment before an exception is raised:
 
 ```ruby
-config.filter_parameters += [:secret_details, :credit_card_number]
-```
-
-See the Rails documentation for more information: https://guides.rubyonrails.org/configuring.html#config-filter-parameters
-
-
-## Notifiers
-
-ExceptionNotification relies on notifiers to deliver notifications when errors occur in your applications. By default the following notifiers are available:
-
-* [Datadog notifier](docs/notifiers/datadog.md)
-* [Email notifier](docs/notifiers/email.md)
-* [HipChat notifier](docs/notifiers/hipchat.md)
-* [IRC notifier](docs/notifiers/irc.md)
-* [Slack notifier](docs/notifiers/slack.md)
-* [Mattermost notifier](docs/notifiers/mattermost.md)
-* [Teams notifier](docs/notifiers/teams.md)
-* [Amazon SNS](docs/notifiers/sns.md)
-* [Google Chat notifier](docs/notifiers/google_chat.md)
-* [WebHook notifier](docs/notifiers/webhook.md)
-
-You also can implement your own [custom notifier](docs/notifiers/custom.md).
-
-
-## Error Grouping
-
-In general, ExceptionNotification will send a notification when every error occurs, which may result in a problem: if your site has a high throughput and a particular error is raised frequently, you will receive too many notifications. During a short period of time, your mail box may be filled with thousands of exception mails, or your mail server may even become slow. To prevent this, you can choose to group errors by setting the `:error_grouping` option to `true`.
-
-Error grouping uses a default formula of `Math.log2(errors_count)` to determine whether to send the notification, based on the accumulated error count for each specific exception. This makes the notifier only send a notification when the count is: 1, 2, 4, 8, 16, 32, 64, 128, ..., (2**n). You can use `:notification_trigger` to override this default formula.
-
-The following code shows the available options to configure error grouping:
-
-```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
-  ignore_exceptions: ['ActionView::TemplateError'] + ExceptionNotifier.ignored_exceptions,
-  email:  {
-    email_prefix: '[PREFIX] ',
-    sender_address: %{"notifier" <notifier@example.com>},
-    exception_recipients: %w{exceptions@example.com}
-  },
-  error_grouping: true,
-  # error_grouping_period: 5.minutes,    # the time before an error is regarded as fixed
-  # error_grouping_cache: Rails.cache,   # for other applications such as Sinatra, use one instance of ActiveSupport::Cache::Store
-  #
-  # notification_trigger: specify a callback to determine when a notification should be sent,
-  #   the callback will be invoked with two arguments:
-  #     exception: the exception raised
-  #     count: accumulated errors count for this exception
-  #
-  # notification_trigger: lambda { |exception, count| count % 10 == 0 }
-```
-
-
-## Ignore Exceptions
-
-You can choose to ignore certain exceptions, which will make ExceptionNotification avoid sending notifications for those specified. There are three ways of specifying which exceptions to ignore:
-
-* `:ignore_exceptions` - By exception class (i.e. ignore RecordNotFound ones)
-
-* `:ignore_crawlers`   - From crawler (i.e. ignore ones originated by Googlebot)
-
-* `:ignore_if`         - Custom (i.e. ignore exceptions that satisfy some condition)
-
-* `:ignore_notifer_if` - Custom (i.e. let each notifier ignore exceptions if by-notifier condition is satisfied)
-
-
-### :ignore_exceptions
-
-*Array of strings, default: %w{ActiveRecord::RecordNotFound Mongoid::Errors::DocumentNotFound AbstractController::ActionNotFound ActionController::RoutingError ActionController::UnknownFormat ActionDispatch::Http::MimeNegotiation::InvalidType Rack::Utils::InvalidParameterError}*
-
-Ignore specified exception types. To achieve that, you should use the `:ignore_exceptions` option, like this:
-
-```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
-                                        ignore_exceptions: ['ActionView::TemplateError'] + ExceptionNotifier.ignored_exceptions,
-                                        email: {
-                                          email_prefix: '[PREFIX] ',
-                                          sender_address: %{"notifier" <notifier@example.com>},
-                                          exception_recipients: %w{exceptions@example.com}
-                                        }
-```
-
-The above will make ExceptionNotifier ignore a *TemplateError* exception, plus the ones ignored by default.
-
-
-### :ignore_crawlers
-
-*Array of strings, default: []*
-
-In some cases you may want to avoid getting notifications from exceptions made by crawlers. To prevent sending those unwanted notifications, use the `:ignore_crawlers` option like this:
-
-```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
-                                        ignore_crawlers: %w{Googlebot bingbot},
-                                        email: {
-                                          email_prefix: '[PREFIX] ',
-                                          sender_address: %{"notifier" <notifier@example.com>},
-                                          exception_recipients: %w{exceptions@example.com}
-                                        }
-```
-
-
-### :ignore_if
-
-*Lambda, default: nil*
-
-You can ignore exceptions based on a condition. Take a look:
-
-```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
-                                        ignore_if: ->(env, exception) { exception.message =~ /^Couldn't find Page with ID=/ },
-                                        email: {
-                                          email_prefix: '[PREFIX] ',
-                                          sender_address: %{"notifier" <notifier@example.com>},
-                                          exception_recipients: %w{exceptions@example.com},
-                                        }
-```
-
-You can make use of both the environment and the exception inside the lambda to decide wether to avoid or not sending the notification.
-
-
-### :ignore_notifier_if
-
-* Hash of Lambda, default: nil*
-
-In case you want a notifier to ignore certain exceptions, but don't want other notifiers to skip them, you can set by-notifier ignore options.
-By setting below, each notifier will ignore exceptions when its corresponding condition is met.
-
-```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
-                                        ignore_notifier_if: {
-                                          email: ->(env, exception) { !Rails.env.production? },
-                                          slack: ->(env, exception) { exception.message =~ /^Couldn't find Page with ID=/ }
-                                        },
-
-                                        email: {
-                                          sender_address: %{"notifier" <notifier@example.com>},
-                                          exception_recipients: %w{exceptions@example.com}
-                                        },
-                                        slack: {
-                                          webhook_url: '[Your webhook url]',
-                                          channel: '#exceptions',
-                                        }
-```
-
-To customize each condition, you can make use of environment and the exception object inside the lambda.
-
-
-## Rack X-Cascade Header
-
-Some rack apps (Rails in particular) utilize the "X-Cascade" header to pass the request-handling responsibility to the next middleware in the stack.
-
-Rails' routing middleware uses this strategy, rather than raising an exception, to handle routing errors (e.g. 404s); to be notified whenever a 404 occurs, set this option to "false."
-
-
-### :ignore_cascade_pass
-
-*Boolean, default: true*
-
-Set to false to trigger notifications when another rack middleware sets the "X-Cascade" header to "pass."
-
-
-## Background Jobs
-
-The ExceptionNotification middleware can only detect notifications that occur during web requests (controller actions). If you have any Ruby code that gets run _outside_ of a normal web request (hereafter referred to as a "background job" or "background process"), exceptions must be detected a different way (the middleware won't even be running in this context).
-
-Examples of background jobs include jobs triggered from a cron file or from a queue.
-
-ExceptionNotificatior can be configured to automatically notify of exceptions occurring in most common types of Rails background jobs such as [rake tasks](#rake-tasks). Additionally, it provides optional integrations for some 3rd-party libraries such as [Resque and Sidekiq](#resquesidekiq). And of course you can manually trigger a notification if no integration is provided.
-
-
-### Rails runner
-
-To enable exception notification for your runner commands, add this line to your `config/application.rb` _below_ the `Bundler.require` line (ensuring that `exception_notification` and `rails` gems will have already been required):
-
-```ruby
-require 'exception_notification/rails'
-```
-
-(Requiring it from an initializer is too late, because this depends on the `runner` callback, and that will have already been fired _before_ any initializers run.)
-
-
-### Rake tasks
-
-If you've already added `require 'exception_notification/rails'` to your `config/application.rb` as described [above](#rails-runner), then there's nothing further you need to do. (That Engine has a `rake_tasks` callback which automatically requires the file below.)
-
-Alternatively, you can add this line to your `config/initializers/exception_notification.rb`:
-
-```ruby
-require 'exception_notification/rake'
-```
-
-
-### Manually notify of exceptions
-
-If you want to manually send a notifications from a background process that is not _automatically_ handled by ExceptionNotification, then you need to manually call the `notify_exception` method like this:
-
-```ruby
-begin
-  # some code...
-rescue => e
-  ExceptionNotifier.notify_exception(e)
-end
-```
-
-You can include information about the background process that created the error by including a `data` parameter:
-
-```ruby
-begin
-  # some code...
-rescue => e
-  ExceptionNotifier.notify_exception(
-    e,
-    data: { worker: worker.to_s, queue: queue, payload: payload}
-  )
-end
-```
-
-### Resque/Sidekiq
-
-Instead of manually calling background notifications for each job/worker, you can configure ExceptionNotification to do this automatically. For this, run:
-
-```bash
-rails g exception_notification:install --resque
-```
-
-or
-
-```bash
-rails g exception_notification:install --sidekiq
-```
-
-As above, make sure the gem is not listed solely under the `production` group, since this initializer will be loaded regardless of environment.
-
-## Manually notify of exceptions from `rescue_from` handler
-
-If your controller rescues and handles an error, the middleware won't be able to see that there was an exception, and the notifier will never be run. To manually notify of an error after rescuing it, you can do something like the following:
-
-```ruby
-class SomeController < ApplicationController
-  rescue_from Exception, with: :server_error
-
-  def server_error(exception)
-    # Whatever code that handles the exception
-
-    ExceptionNotifier.notify_exception(
-      exception,
-      env: request.env, data: { message: 'was doing something wrong' }
-    )
+class ApplicationController < ActionController::Base
+  before_action :prepare_exception_notification
+
+  private
+
+  def prepare_exception_notification
+    request.env["exception_notifier.exception_data"] = {
+      current_user_id: current_user&.id,
+      account_id: current_account&.id,
+      request_id: request.request_id
+    }
   end
 end
 ```
 
-## Development and support
+That data is included in supported notifier payloads and email sections.
 
-Pull requests are very welcome! Issues too.
+### Report a Handled Controller Error
 
-You can always debug the gem by running `rake console`.
-
-Please read first the [Contributing Guide](CONTRIBUTING.md).
-
-And always follow the [code of conduct](CODE_OF_CONDUCT.md).
-
-### Optional: Bundler local override
-
-If your application normally uses a Git source but you want Bundler to use a local checkout while developing, keep the Git source in the application's `Gemfile`:
+Middleware only sees exceptions that continue up the Rack stack. If a controller rescues an error, notify manually:
 
 ```ruby
-gem "exception_notification", git: "https://github.com/kmcphillips/exception_notification.git"
+class OrdersController < ApplicationController
+  rescue_from PaymentGateway::Timeout, with: :payment_gateway_timeout
+
+  private
+
+  def payment_gateway_timeout(exception)
+    ExceptionNotifier.notify_exception(
+      exception,
+      env: request.env,
+      data: {
+        order_id: params[:id],
+        request_id: request.request_id
+      }
+    )
+
+    render json: {error: "payment_gateway_timeout"}, status: :bad_gateway
+  end
+end
 ```
 
-Then configure Bundler in that application:
+### Report from Plain Ruby Code
+
+```ruby
+begin
+  ImportCustomers.call(file_path)
+rescue => exception
+  ExceptionNotifier.notify_exception(
+    exception,
+    data: {
+      job: "ImportCustomers",
+      file_path: file_path
+    }
+  )
+
+  raise
+end
+```
+
+### Filter Sensitive Parameters
+
+Exception emails can include request parameters. Use Rails parameter filtering for secrets:
+
+```ruby
+# config/application.rb
+config.filter_parameters += [
+  :password,
+  :password_confirmation,
+  :credit_card_number,
+  :secret_details
+]
+```
+
+## Notifiers
+
+Built-in notifier docs:
+
+* [Email](docs/notifiers/email.md)
+* [Slack](docs/notifiers/slack.md)
+* [Mattermost](docs/notifiers/mattermost.md)
+* [Teams](docs/notifiers/teams.md)
+* [IRC](docs/notifiers/irc.md)
+* [Amazon SNS](docs/notifiers/sns.md)
+* [Google Chat](docs/notifiers/google_chat.md)
+* [Datadog](docs/notifiers/datadog.md)
+* [HipChat](docs/notifiers/hipchat.md)
+* [WebHook](docs/notifiers/webhook.md)
+* [Custom notifiers](docs/notifiers/custom.md)
+
+You can also register any object that responds to `#call(exception, options)`:
+
+```ruby
+ExceptionNotification.configure do |config|
+  config.add_notifier :logger, lambda { |exception, options|
+    Rails.logger.error(
+      "[exception_notification] #{exception.class}: #{exception.message} #{options[:data].inspect}"
+    )
+  }
+end
+```
+
+## Noise Control
+
+### Ignore Known Exceptions
+
+```ruby
+ExceptionNotification.configure do |config|
+  config.ignored_exceptions += %w[
+    ActionView::TemplateError
+    MyApp::ExpectedError
+  ]
+end
+```
+
+The default ignored exceptions include common routing, record-not-found, and invalid-parameter errors.
+
+### Ignore Crawlers
+
+```ruby
+ExceptionNotification.configure do |config|
+  config.ignore_crawlers %w[Googlebot bingbot]
+end
+```
+
+### Ignore by Condition
+
+```ruby
+ExceptionNotification.configure do |config|
+  config.ignore_if do |exception, options|
+    path = options.dig(:env, "PATH_INFO")
+
+    Rails.env.local? ||
+      path == "/health" ||
+      exception.message.match?(/Couldn't find Page with ID=/)
+  end
+end
+```
+
+### Ignore Only One Notifier
+
+Use per-notifier filtering when email should still send but chat should stay quiet, or the reverse:
+
+```ruby
+ExceptionNotification.configure do |config|
+  config.ignore_notifier_if(:slack) do |exception, _options|
+    exception.is_a?(ActionController::RoutingError)
+  end
+end
+```
+
+### Group Repeated Errors
+
+Error grouping prevents notification floods for the same exception. With the default trigger, notifications are sent at counts 1, 2, 4, 8, 16, and so on.
+
+```ruby
+ExceptionNotification.configure do |config|
+  config.error_grouping = true
+  config.error_grouping_cache = Rails.cache
+  config.error_grouping_period = 5.minutes
+
+  config.notification_trigger = lambda { |_exception, count|
+    count == 1 || (count % 10).zero?
+  }
+end
+```
+
+## Background Jobs
+
+The Rack middleware only catches exceptions during web requests. For jobs and command-line work, use one of the integrations below.
+
+### Rake Tasks
+
+The generated initializer includes:
+
+```ruby
+require "exception_notification/rake"
+```
+
+That reports unhandled exceptions from rake tasks.
+
+### Rails Runner
+
+For `rails runner`, require the Rails integration from `config/application.rb` as shown in [Rails Runner Support](#rails-runner-support).
+
+### Sidekiq and Resque
+
+Generate an initializer with the integration you need:
 
 ```bash
-bundle config set local.exception_notification /Users/sesharim/Developer/other/exception_notification
+bundle exec rails generate exception_notification:install --sidekiq
+```
+
+or:
+
+```bash
+bundle exec rails generate exception_notification:install --resque
+```
+
+### Manual Job Reporting
+
+If a job system is not integrated, report exceptions directly:
+
+```ruby
+class RebuildSearchIndexJob
+  def perform(account_id)
+    RebuildSearchIndex.call(account_id)
+  rescue => exception
+    ExceptionNotifier.notify_exception(
+      exception,
+      data: {
+        job: self.class.name,
+        account_id: account_id
+      }
+    )
+
+    raise
+  end
+end
+```
+
+## Rack and Sinatra
+
+Use the Rack middleware directly when you are not using the Rails generator, or when you need Rack-only options such as `ignore_cascade_pass`.
+
+```ruby
+require "exception_notification"
+
+use ExceptionNotification::Rack,
+  email: {
+    email_prefix: "[RACK ERROR] ",
+    sender_address: %("Exception Notifier" <notifier@example.com>),
+    exception_recipients: %w[exceptions@example.com]
+  },
+  ignore_exceptions: ["Sinatra::NotFound"],
+  ignore_cascade_pass: true
+```
+
+Sinatra users can also review the [example application](examples/sinatra).
+
+## Development
+
+Install dependencies:
+
+```bash
 bundle install
 ```
 
+Run tests:
+
+```bash
+bundle exec rake test
+```
+
+Open a console with the gem loaded:
+
+```bash
+bundle exec rake console
+```
+
+Build the gem locally:
+
+```bash
+bundle exec rake build
+```
+
+Pull requests and issues are welcome. Please read the [Contributing Guide](CONTRIBUTING.md) and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-Copyright (c) 2005 Jamis Buck, released under the [MIT license](http://www.opensource.org/licenses/MIT).
+Released under the [MIT license](MIT-LICENSE).
 
-Maintainer: [Kevin McPhillips](https://github.com/kmcphillips)
+Maintainer: [@lukin-io](https://github.com/lukin-io)
