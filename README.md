@@ -7,8 +7,60 @@
 
 This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify`, while keeping the existing gem name and public API compatible for applications that already use `exception_notification`.
 
+## Quick Start
+
+Add the gem to your Rails application's `Gemfile`:
+
+```ruby
+gem "exception_notification"
+```
+
+Install it and generate the initializer:
+
+```bash
+bundle install
+bundle exec rails generate exception_notification:install
+```
+
+Configure at least one notifier:
+
+```ruby
+# config/initializers/exception_notification.rb
+require "exception_notification/rails"
+require "exception_notification/rake"
+
+ExceptionNotification.configure do |config|
+  config.add_notifier :email, {
+    email_prefix: "[#{Rails.env.upcase}] ",
+    sender_address: %("Exception Notifier" <notifier@example.com>),
+    exception_recipients: %w[exceptions@example.com]
+  }
+
+  config.ignore_if do |_exception, _options|
+    Rails.env.local?
+  end
+end
+```
+
+Email delivery uses your application's ActionMailer configuration. See [ActionMailer configuration](docs/notifiers/email.md#actionmailer-configuration) if emails do not send.
+
+## How To Test It
+
+After configuring a notifier, trigger a real exception in a non-production environment.
+
+```ruby
+# config/routes.rb
+get "/exception_notification_test", to: proc {
+  raise "Exception Notification test"
+}
+```
+
+Start Rails, visit `/exception_notification_test`, and confirm the notification arrives. Remove the route after testing.
+
 ## Contents
 
+* [Quick Start](#quick-start)
+* [How To Test It](#how-to-test-it)
 * [What It Does](#what-it-does)
 * [Compatibility](#compatibility)
 * [Installation](#installation)
@@ -16,8 +68,10 @@ This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lu
 * [Common Workflows](#common-workflows)
 * [Notifiers](#notifiers)
 * [Noise Control](#noise-control)
+* [Production Checklist](#production-checklist)
 * [Background Jobs](#background-jobs)
 * [Rack and Sinatra](#rack-and-sinatra)
+* [Maintenance](#maintenance)
 * [Development](#development)
 * [License](#license)
 
@@ -37,8 +91,8 @@ It supports:
 
 ## Compatibility
 
-* Ruby 3.2 or newer.
-* Rails 7.1 or newer, including Rails 8.
+* Ruby 3.4.4 or newer.
+* Rails 8.0.2 or newer, below Rails 9.
 * Rack applications, including Sinatra.
 
 The gem has a long history in the Rails ecosystem. The original code was extracted from Rails years ago, and this repository continues maintenance for modern Ruby and Rails versions.
@@ -88,27 +142,9 @@ The generated file is written to `config/initializers/exception_notification.rb`
 
 Keep the gem available to every environment that loads the initializer. If you want notifications only in production, keep the gem outside a `production`-only bundle group and add an ignore rule for local environments.
 
-### Minimal Email Setup
+### Initializer Notes
 
-```ruby
-# config/initializers/exception_notification.rb
-require "exception_notification/rails"
-require "exception_notification/rake"
-
-ExceptionNotification.configure do |config|
-  config.add_notifier :email, {
-    email_prefix: "[#{Rails.env.upcase}] ",
-    sender_address: %("Exception Notifier" <notifier@example.com>),
-    exception_recipients: %w[exceptions@example.com]
-  }
-
-  config.ignore_if do |_exception, _options|
-    Rails.env.local?
-  end
-end
-```
-
-Email delivery uses your application's ActionMailer configuration. If emails do not send, check [ActionMailer configuration](docs/notifiers/email.md#actionmailer-configuration) first.
+The generated initializer should load the Rails and Rake integrations, then register one or more notifiers. The email example in [Quick Start](#quick-start) is enough for a first setup; add other notifiers from [Notifiers](#notifiers) as needed.
 
 ### Rails Runner Support
 
@@ -325,6 +361,19 @@ ExceptionNotification.configure do |config|
 end
 ```
 
+## Production Checklist
+
+Before relying on exception notifications in production:
+
+* Configure at least one notifier.
+* Verify delivery with a real test exception in staging.
+* Confirm ActionMailer delivery settings if using email.
+* Filter secrets with `config.filter_parameters`.
+* Ignore local and test environments.
+* Add crawler or health-check ignores if they create noise.
+* Enable error grouping for high-traffic applications.
+* Make sure background jobs are covered separately from web requests.
+
 ## Background Jobs
 
 The Rack middleware only catches exceptions during web requests. For jobs and command-line work, use one of the integrations below.
@@ -397,6 +446,12 @@ use ExceptionNotification::Rack,
 ```
 
 Sinatra users can also review the [example application](examples/sinatra).
+
+## Maintenance
+
+This repository is the current home for the `exception_notification` gem. The gem name and public API remain compatible for existing applications, while maintenance focuses on modern Ruby and Rails support, clear documentation, and practical bug fixes.
+
+Issues and pull requests are welcome when they include enough context to reproduce the behavior.
 
 ## Development
 

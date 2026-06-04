@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
     "source_code_uri" => "https://github.com/lukin-io/exceptify"
   }
 
-  s.required_ruby_version = ">= 3.2"
+  s.required_ruby_version = ">= 3.4.4"
 
   s.files = Dir[
     "lib/**/*",
@@ -40,7 +40,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "mock_redis", "~> 0.19.0"
   s.add_development_dependency "net-smtp"
   s.add_development_dependency "ostruct"
-  s.add_development_dependency "rails", ">= 7.1", "< 9"
+  s.add_development_dependency "rails", ">= 8.0.2", "< 9"
   s.add_development_dependency "resque", "~> 1.8.0"
   s.add_development_dependency "sidekiq", ">= 5.0.4"
   s.add_development_dependency "slack-notifier", ">= 1.0.0"

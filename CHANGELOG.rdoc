@@ -1,6 +1,7 @@
 == Unreleased
 
-nil
+* Require Ruby 3.4.4 or newer.
+* Require Rails 8.0.2 or newer for development and verification.
 
 == 5.0.1
 
