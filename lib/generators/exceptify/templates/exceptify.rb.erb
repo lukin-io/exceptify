@@ -1,16 +1,16 @@
 # Move this require to your `config/application.rb` if you want to be notified from runner commands too.
-require "exception_notification/rails"
-require "exception_notification/rake"
+require "exceptify/rails"
+require "exceptify/rake"
 <% if options.sidekiq? %>
-require "exception_notification/sidekiq"<% end %><% if options.resque? %>
+require "exceptify/sidekiq"<% end %><% if options.resque? %>
 require "resque/failure/multiple"
 require "resque/failure/redis"
-require "exception_notification/resque"
+require "exceptify/resque"
 
-Resque::Failure::Multiple.classes = [ Resque::Failure::Redis, ExceptionNotification::Resque ]
+Resque::Failure::Multiple.classes = [ Resque::Failure::Redis, Exceptify::Resque ]
 Resque::Failure.backend = Resque::Failure::Multiple<% end %>
 
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   # Ignore additional exception types. The default list of exception classes is:
   #   ActiveRecord::RecordNotFound Mongoid::Errors::DocumentNotFound AbstractController::ActionNotFound
   #   ActionController::RoutingError ActionController::UnknownFormat ActionController::UrlGenerationError

@@ -13,7 +13,7 @@ gem 'slack-notifier'
 To configure it, you need to set at least the 'webhook_url' option, like this:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -44,7 +44,7 @@ end
 If you find this too verbose, you can determine to exclude certain information by doing the following:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         slack: {
                                           webhook_url: '[Your webhook url]',
                                           channel: '#exceptions',
@@ -88,11 +88,11 @@ the `pre_callback` option when defining the middleware.
 ```
 - `message_opts` is the hash you want to append to if you need to add an option.
 - `options` is the hash containing the values when you call
-  `ExceptionNotification.notify_exception`
+  `ExceptionNotifier.notify_exception`
 
 An example implementation would be:
 ```ruby
-config.middleware.use ExceptionNotification::Rack,
+config.middleware.use Exceptify::Rack,
   slack: {
     webhook_url: '[Your webhook url]',
     pre_callback: proc { |opts, _notifier, _backtrace, _message, message_opts|

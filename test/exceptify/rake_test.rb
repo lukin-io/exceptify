@@ -3,7 +3,7 @@
 require "test_helper"
 
 require "rake"
-require "exception_notification/rake"
+require "exceptify/rake"
 
 class RakeTest < ActiveSupport::TestCase
   setup do

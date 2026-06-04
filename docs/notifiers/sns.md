@@ -13,7 +13,7 @@ Add the [aws-sdk-sns](https://github.com/aws/aws-sdk-ruby/tree/master/gems/aws-s
 To configure it, you **need** to set 3 required options for aws: `region`, `access_key_id` and `secret_access_key`, and one more option for sns: `topic_arn`.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         sns: {
                                           region: 'us-east-x',
                                           access_key_id: 'access_key_id',

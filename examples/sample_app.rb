@@ -15,8 +15,10 @@ gemfile do
   gem "mocha", "2.2.0"
 end
 
+require "exceptify"
+
 class SampleApp < Rails::Application
-  config.middleware.use ExceptionNotification::Rack,
+  config.middleware.use Exceptify::Rack,
     webhook: {
       url: "https://example.com"
     }

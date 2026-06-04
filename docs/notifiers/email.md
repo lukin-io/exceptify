@@ -6,7 +6,7 @@ After an exception notification has been delivered the rack environment variable
 
 #### ActionMailer configuration
 
-For the email to be sent, there must be a default ActionMailer `delivery_method` setting configured. If you do not have one, you can use the following code (assuming your app server machine has `sendmail`). Depending on the environment you want ExceptionNotification to run in, put the following code in your `config/environments/production.rb` and/or `config/environments/development.rb`:
+For the email to be sent, there must be a default ActionMailer `delivery_method` setting configured. If you do not have one, you can use the following code (assuming your app server machine has `sendmail`). Depending on the environment you want Exceptify to run in, put the following code in your `config/environments/production.rb` and/or `config/environments/development.rb`:
 
 ```ruby
 config.action_mailer.delivery_method = :sendmail
@@ -58,7 +58,7 @@ You can reorder the sections, or exclude sections completely, by using `sections
 describe application-specific data--just add the section's name to the list (wherever you'd like), and define the corresponding partial. Like the following example with two new added sections:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -96,7 +96,7 @@ In the above case, `@document` and `@person` would be made available to the emai
 When using [background notifications](#background-notifications) some variables are not available in the views, like `@kontroller` and `@request`. Thus, you may want to include different sections for background notifications:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -112,7 +112,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 Additionally, you may want to set customized headers on the outcoming emails. To do so, simply use the `:email_headers` option:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: "[PREFIX] ",
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -143,16 +143,16 @@ If enabled, include the controller and action names in the subject. Use `include
 
 *Symbol, default: :text*
 
-By default, ExceptionNotification sends emails in plain text, in order to sends multipart notifications (aka HTML emails) use `email_format: :html`.
+By default, Exceptify sends emails in plain text. To send multipart notifications (aka HTML emails), use `email_format: :html`.
 
 ##### delivery_method
 
 *Symbol, default: :smtp*
 
-By default, ExceptionNotification sends emails using the ActionMailer configuration of the application. In order to send emails by another delivery method, use the `delivery_method` option:
+By default, Exceptify sends emails using the ActionMailer configuration of the application. In order to send emails by another delivery method, use the `delivery_method` option:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -167,7 +167,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 Besides the `delivery_method` option, you also can customize the mailer settings by passing a hash under an option named `DELIVERY_METHOD_settings`. Thus, you can use override specific SMTP settings for notifications using:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -186,7 +186,7 @@ A complete list of `smtp_settings` options can be found in the [ActionMailer Con
 
 *String, default: ActionMailer::Base*
 
-The parent mailer which ExceptionNotification mailer inherit from.
+The parent mailer which the Exceptify mailer inherits from.
 
 ##### deliver_with
 

@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-require "exception_notification/resque"
+require "exceptify/resque"
 require "resque"
 require "mock_redis"
 require "resque/failure/multiple"
@@ -13,7 +13,7 @@ class ResqueTest < ActiveSupport::TestCase
     # Resque.redis=() only supports a String or Redis instance in Resque 1.8
     Resque.instance_variable_set(:@redis, MockRedis.new)
 
-    Resque::Failure::Multiple.classes = [Resque::Failure::Redis, ExceptionNotification::Resque]
+    Resque::Failure::Multiple.classes = [Resque::Failure::Redis, Exceptify::Resque]
     Resque::Failure.backend = Resque::Failure::Multiple
 
     @worker = Resque::Worker.new(:jobs)
@@ -24,7 +24,7 @@ class ResqueTest < ActiveSupport::TestCase
   test "count returns the number of failures" do
     Resque::Job.create(:jobs, BadJob)
     @worker.work(0)
-    assert_equal 1, ExceptionNotification::Resque.count
+    assert_equal 1, Exceptify::Resque.count
   end
 
   test "notifies exception when job fails" do

@@ -3,15 +3,15 @@
 require "rubygems"
 require "bundler/setup"
 require "sinatra/base"
-require "exception_notification"
+require "exceptify"
 
 class SinatraApp < Sinatra::Base
   use Rack::Config do |env|
-    # This is highly recommended.  It will prevent the ExceptionNotification email from including your users' passwords
+    # This is highly recommended. It will prevent Exceptify email notifications from including your users' passwords.
     env["action_dispatch.parameter_filter"] = [:password]
   end
 
-  use ExceptionNotification::Rack,
+  use Exceptify::Rack,
     email: {
       email_prefix: "[Example] ",
       sender_address: %("notifier" <notifier@example.com>),

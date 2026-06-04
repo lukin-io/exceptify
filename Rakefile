@@ -3,6 +3,7 @@
 require "rubygems"
 require "bundler/setup"
 require "irb"
+require "exceptify"
 Bundler::GemHelper.install_tasks
 
 require "rake/testtask"
@@ -19,6 +20,6 @@ end
 desc "Start a console with the gem"
 task :console do
   ARGV.clear
-  puts "ExceptionNotification #{ExceptionNotification::VERSION} loaded."
+  puts "Exceptify #{Exceptify::VERSION} loaded."
   IRB.start
 end

@@ -11,7 +11,7 @@ gem 'httparty'
 To configure it, you **need** to set the `webhook_url` option.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
   google_chat: {
     webhook_url: 'https://chat.googleapis.com/v1/spaces/XXXXXXXX/messages?key=YYYYYYYYYYYYY&token=ZZZZZZZZZZZZ'
   }

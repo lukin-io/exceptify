@@ -12,7 +12,7 @@ To configure it, you **need** to set the `webhook_url` option.
 You can also specify an other channel with `channel` option.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -29,7 +29,7 @@ By default this will use your Rails application name to match the git repository
 
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -44,7 +44,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 You can also specify the bot name and avatar with `username` and `avatar` options.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: 'PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -60,7 +60,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 Finally since the notifier use HTTParty, you can include all HTTParty options, like basic_auth for example.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},

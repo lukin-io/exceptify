@@ -17,29 +17,29 @@ class RackTest < ActiveSupport::TestCase
 
   test 'should ignore "X-Cascade" header by default' do
     ExceptionNotifier.expects(:notify_exception).never
-    ExceptionNotification::Rack.new(@pass_app).call({})
+    Exceptify::Rack.new(@pass_app).call({})
   end
 
   test 'should notify on "X-Cascade" = "pass" if ignore_cascade_pass option is false' do
     ExceptionNotifier.expects(:notify_exception).once
-    ExceptionNotification::Rack.new(@pass_app, ignore_cascade_pass: false).call({})
+    Exceptify::Rack.new(@pass_app, ignore_cascade_pass: false).call({})
   end
 
   test "should assign error_grouping if error_grouping is specified" do
     refute ExceptionNotifier.error_grouping
-    ExceptionNotification::Rack.new(@normal_app, error_grouping: true).call({})
+    Exceptify::Rack.new(@normal_app, error_grouping: true).call({})
     assert ExceptionNotifier.error_grouping
   end
 
   test "should assign notification_trigger if notification_trigger is specified" do
     assert_nil ExceptionNotifier.notification_trigger
-    ExceptionNotification::Rack.new(@normal_app, notification_trigger: ->(_i) { true }).call({})
+    Exceptify::Rack.new(@normal_app, notification_trigger: ->(_i) { true }).call({})
     assert_respond_to ExceptionNotifier.notification_trigger, :call
   end
 
   if defined?(Rails) && Rails.respond_to?(:cache)
     test "should set default cache to Rails cache" do
-      ExceptionNotification::Rack.new(@normal_app, error_grouping: true).call({})
+      Exceptify::Rack.new(@normal_app, error_grouping: true).call({})
       assert_equal Rails.cache, ExceptionNotifier.error_grouping_cache
     end
   end
@@ -51,7 +51,7 @@ class RackTest < ActiveSupport::TestCase
     env = {"HTTP_USER_AGENT" => "Mozilla/5.0 (compatible; Crawlerbot/2.1;)"}
 
     begin
-      ExceptionNotification::Rack.new(exception_app, ignore_crawlers: %w[Crawlerbot]).call(env)
+      Exceptify::Rack.new(exception_app, ignore_crawlers: %w[Crawlerbot]).call(env)
 
       flunk
     rescue
@@ -66,7 +66,7 @@ class RackTest < ActiveSupport::TestCase
     env = {}
 
     begin
-      ExceptionNotification::Rack.new(
+      Exceptify::Rack.new(
         exception_app,
         ignore_if: ->(_env, exception) { exception.is_a? RuntimeError }
       ).call(env)
@@ -88,7 +88,7 @@ class RackTest < ActiveSupport::TestCase
     env = {}
 
     begin
-      ExceptionNotification::Rack.new(
+      Exceptify::Rack.new(
         exception_app,
         ignore_notifier_if: {
           notifier1: ->(_env, exception) { exception.is_a? RuntimeError }

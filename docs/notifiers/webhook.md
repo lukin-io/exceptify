@@ -13,7 +13,7 @@ gem 'httparty'
 To configure it, you need to set the `url` option, like this:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -27,7 +27,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 By default, the WebhookNotifier will call the URLs using the POST method. But, you can change this using the `http_method` option.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -42,7 +42,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 Besides the `url` and `http_method` options, all the other options are passed directly to HTTParty. Thus, if the HTTP server requires authentication, you can include the following options:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},

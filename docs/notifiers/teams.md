@@ -13,7 +13,7 @@ By default this will use your Rails application name to match the git repository
 By that same notion, you may also set a `jira_url` to get a button that will send you to the New Issue screen in Jira.
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
   email: {
     email_prefix: "[PREFIX] ",
     sender_address: %{"notifier" <notifier@example.com>},

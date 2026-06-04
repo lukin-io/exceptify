@@ -1,4 +1,4 @@
-# Using Exception Notification with Sinatra
+# Using Exceptify with Sinatra
 
 ## Quick start
 

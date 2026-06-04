@@ -4,11 +4,11 @@ require "test_helper"
 
 # To allow sidekiq error handlers to be registered, sidekiq must be in
 # "server mode". This mode is triggered by loading sidekiq/cli. Note this
-# has to be loaded before exception_notification/sidekiq.
+# has to be loaded before exceptify/sidekiq.
 require "sidekiq/cli"
 require "sidekiq/testing"
 
-require "exception_notification/sidekiq"
+require "exceptify/sidekiq"
 
 class MockSidekiqServer
   include ::Sidekiq::Component

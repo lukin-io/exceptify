@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require File.expand_path("lib/exception_notification/version", __dir__)
+require File.expand_path("lib/exceptify/version", __dir__)
 
 Gem::Specification.new do |s|
   s.name = "exception_notification"
-  s.version = ExceptionNotification::VERSION
+  s.version = Exceptify::VERSION
   s.authors = ["lukin.io"]
   s.summary = "Exception notification for Ruby applications"
   s.homepage = "https://github.com/lukin-io/exceptify"

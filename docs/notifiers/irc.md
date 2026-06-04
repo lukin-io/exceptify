@@ -13,7 +13,7 @@ gem 'carrier-pigeon'
 To configure it, you need to set at least the 'domain' option, like this:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         email: {
                                           email_prefix: '[PREFIX] ',
                                           sender_address: %{"notifier" <notifier@example.com>},
@@ -27,7 +27,7 @@ Rails.application.config.middleware.use ExceptionNotification::Rack,
 There are several other options, which are described below. For example, to use ssl and a password, add a prefix, post to the '#log' channel, and include recipients in the message (so that they will be notified), your configuration might look like this:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
                                         irc: {
                                           domain: 'irc.example.com',
                                           nick: 'BadNewsBot',

@@ -19,7 +19,7 @@ client = Dogapi::Client.new(api_key, application_key)
 You then need to set the `client` option, like this:
 
 ```ruby
-Rails.application.config.middleware.use ExceptionNotification::Rack,
+Rails.application.config.middleware.use Exceptify::Rack,
   email: {
     email_prefix: "[PREFIX] ",
     sender_address: %{"notifier" <notifier@example.com>},

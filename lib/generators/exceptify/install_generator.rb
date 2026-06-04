@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-module ExceptionNotification
+module Exceptify
   module Generators
     class InstallGenerator < ::Rails::Generators::Base
-      desc "Creates a ExceptionNotification initializer."
+      desc "Creates an Exceptify initializer."
 
       source_root File.expand_path("templates", __dir__)
       class_option :resque,
@@ -14,7 +14,7 @@ module ExceptionNotification
         desc: "Add support for sending notifications when errors occur in Sidekiq jobs."
 
       def copy_initializer
-        template "exception_notification.rb.erb", "config/initializers/exception_notification.rb"
+        template "exceptify.rb.erb", "config/initializers/exceptify.rb"
       end
     end
   end

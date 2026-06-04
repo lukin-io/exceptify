@@ -2,6 +2,8 @@
 
 * Require Ruby 3.4.4 or newer.
 * Require Rails 8.0.2 or newer for development and verification.
+* Rename the Rails install generator command to <tt>exceptify:install</tt>.
+* Add <tt>exceptify</tt> require paths while keeping the old <tt>exception_notification</tt> paths compatible.
 
 == 5.0.1
 

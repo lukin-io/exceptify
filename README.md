@@ -1,9 +1,9 @@
-# Exception Notification
+# Exceptify
 
 [![Gem Version](https://badge.fury.io/rb/exception_notification.svg)](https://badge.fury.io/rb/exception_notification)
 [![Build Status](https://github.com/lukin-io/exceptify/actions/workflows/ci.yml/badge.svg)](https://github.com/lukin-io/exceptify/actions/workflows/ci.yml)
 
-`exception_notification` sends exception reports from Rails and Rack applications to the channels your team already watches: email, chat, webhooks, and monitoring tools.
+Exceptify sends exception reports from Rails and Rack applications to the channels your team already watches: email, chat, webhooks, and monitoring tools.
 
 This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify`, while keeping the existing gem name and public API compatible for applications that already use `exception_notification`.
 
@@ -19,17 +19,17 @@ Install it and generate the initializer:
 
 ```bash
 bundle install
-bundle exec rails generate exception_notification:install
+bundle exec rails generate exceptify:install
 ```
 
 Configure at least one notifier:
 
 ```ruby
-# config/initializers/exception_notification.rb
-require "exception_notification/rails"
-require "exception_notification/rake"
+# config/initializers/exceptify.rb
+require "exceptify/rails"
+require "exceptify/rake"
 
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.add_notifier :email, {
     email_prefix: "[#{Rails.env.upcase}] ",
     sender_address: %("Exception Notifier" <notifier@example.com>),
@@ -50,12 +50,12 @@ After configuring a notifier, trigger a real exception in a non-production envir
 
 ```ruby
 # config/routes.rb
-get "/exception_notification_test", to: proc {
-  raise "Exception Notification test"
+get "/exceptify_test", to: proc {
+  raise "Exceptify test"
 }
 ```
 
-Start Rails, visit `/exception_notification_test`, and confirm the notification arrives. Remove the route after testing.
+Start Rails, visit `/exceptify_test`, and confirm the notification arrives. Remove the route after testing.
 
 ## Contents
 
@@ -77,7 +77,7 @@ Start Rails, visit `/exception_notification_test`, and confirm the notification 
 
 ## What It Does
 
-Exception Notification installs a Rack middleware that watches for unhandled exceptions during web requests and sends a notification with request, session, environment, backtrace, and optional application data.
+Exceptify installs a Rack middleware that watches for unhandled exceptions during web requests and sends a notification with request, session, environment, backtrace, and optional application data.
 
 Use it when you want a small, self-hosted notification layer for exceptions without adopting a hosted error tracker.
 
@@ -135,10 +135,10 @@ bundle install
 Generate the Rails initializer:
 
 ```bash
-bundle exec rails generate exception_notification:install
+bundle exec rails generate exceptify:install
 ```
 
-The generated file is written to `config/initializers/exception_notification.rb`.
+The generated file is written to `config/initializers/exceptify.rb`.
 
 Keep the gem available to every environment that loads the initializer. If you want notifications only in production, keep the gem outside a `production`-only bundle group and add an ignore rule for local environments.
 
@@ -152,10 +152,10 @@ If you want `rails runner` commands to report exceptions, load the Rails integra
 
 ```ruby
 # config/application.rb
-require "exception_notification/rails"
+require "exceptify/rails"
 ```
 
-The initializer is too late for runner callbacks. You can still keep notifier configuration in `config/initializers/exception_notification.rb`.
+The initializer is too late for runner callbacks. You can still keep notifier configuration in `config/initializers/exceptify.rb`.
 
 ## Common Workflows
 
@@ -170,7 +170,7 @@ gem "slack-notifier"
 Then register both notifiers:
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.add_notifier :email, {
     email_prefix: "[#{Rails.env.upcase}] ",
     sender_address: %("Exception Notifier" <notifier@example.com>),
@@ -195,11 +195,11 @@ Store application data in the request environment before an exception is raised:
 
 ```ruby
 class ApplicationController < ActionController::Base
-  before_action :prepare_exception_notification
+  before_action :prepare_exceptify_notification
 
   private
 
-  def prepare_exception_notification
+  def prepare_exceptify_notification
     request.env["exception_notifier.exception_data"] = {
       current_user_id: current_user&.id,
       account_id: current_account&.id,
@@ -287,10 +287,10 @@ Built-in notifier docs:
 You can also register any object that responds to `#call(exception, options)`:
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.add_notifier :logger, lambda { |exception, options|
     Rails.logger.error(
-      "[exception_notification] #{exception.class}: #{exception.message} #{options[:data].inspect}"
+      "[exceptify] #{exception.class}: #{exception.message} #{options[:data].inspect}"
     )
   }
 end
@@ -301,7 +301,7 @@ end
 ### Ignore Known Exceptions
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.ignored_exceptions += %w[
     ActionView::TemplateError
     MyApp::ExpectedError
@@ -314,7 +314,7 @@ The default ignored exceptions include common routing, record-not-found, and inv
 ### Ignore Crawlers
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.ignore_crawlers %w[Googlebot bingbot]
 end
 ```
@@ -322,7 +322,7 @@ end
 ### Ignore by Condition
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.ignore_if do |exception, options|
     path = options.dig(:env, "PATH_INFO")
 
@@ -338,7 +338,7 @@ end
 Use per-notifier filtering when email should still send but chat should stay quiet, or the reverse:
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.ignore_notifier_if(:slack) do |exception, _options|
     exception.is_a?(ActionController::RoutingError)
   end
@@ -350,7 +350,7 @@ end
 Error grouping prevents notification floods for the same exception. With the default trigger, notifications are sent at counts 1, 2, 4, 8, 16, and so on.
 
 ```ruby
-ExceptionNotification.configure do |config|
+Exceptify.configure do |config|
   config.error_grouping = true
   config.error_grouping_cache = Rails.cache
   config.error_grouping_period = 5.minutes
@@ -383,7 +383,7 @@ The Rack middleware only catches exceptions during web requests. For jobs and co
 The generated initializer includes:
 
 ```ruby
-require "exception_notification/rake"
+require "exceptify/rake"
 ```
 
 That reports unhandled exceptions from rake tasks.
@@ -397,13 +397,13 @@ For `rails runner`, require the Rails integration from `config/application.rb` a
 Generate an initializer with the integration you need:
 
 ```bash
-bundle exec rails generate exception_notification:install --sidekiq
+bundle exec rails generate exceptify:install --sidekiq
 ```
 
 or:
 
 ```bash
-bundle exec rails generate exception_notification:install --resque
+bundle exec rails generate exceptify:install --resque
 ```
 
 ### Manual Job Reporting
@@ -433,9 +433,9 @@ end
 Use the Rack middleware directly when you are not using the Rails generator, or when you need Rack-only options such as `ignore_cascade_pass`.
 
 ```ruby
-require "exception_notification"
+require "exceptify"
 
-use ExceptionNotification::Rack,
+use Exceptify::Rack,
   email: {
     email_prefix: "[RACK ERROR] ",
     sender_address: %("Exception Notifier" <notifier@example.com>),
