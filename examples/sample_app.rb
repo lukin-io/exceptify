@@ -10,7 +10,7 @@ gemfile do
   source "https://rubygems.org"
 
   gem "rails", "8.0.1"
-  gem "exception_notification", path: File.expand_path("../..", __FILE__)
+  gem "exceptify", path: File.expand_path("../..", __FILE__)
   gem "httparty", "0.22.0"
   gem "mocha", "2.2.0"
 end

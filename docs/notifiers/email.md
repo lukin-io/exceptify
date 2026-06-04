@@ -2,7 +2,7 @@
 
 The Email notifier sends notifications by email. The notifications/emails sent includes information about the current request, session, and environment, and also gives a backtrace of the exception.
 
-After an exception notification has been delivered the rack environment variable `exception_notifier.delivered` will be set to true.
+After an exception notification has been delivered the rack environment variable `exceptify.delivered` will be set to true.
 
 #### ActionMailer configuration
 
@@ -23,7 +23,7 @@ config.action_mailer.raise_delivery_errors = true
 
 ##### sender_address
 
-*String, default: %("Exception Notifier" <exception.notifier@example.com>)*
+*String, default: %("Exceptify" <notifier@example.com>)*
 
 Who the message is from.
 
@@ -43,7 +43,7 @@ The subject's prefix of the message.
 
 *Array of strings, default: %w(request session environment backtrace)*
 
-By default, the notification email includes four parts: request, session, environment, and backtrace (in that order). You can customize how each of those sections are rendered by placing a partial named for that part in your `app/views/exception_notifier` directory (e.g., `_session.rhtml`). Each partial has access to the following variables:
+By default, the notification email includes four parts: request, session, environment, and backtrace (in that order). You can customize how each of those sections are rendered by placing a partial named for that part in your `app/views/exceptify` directory (e.g., `_session.rhtml`). Each partial has access to the following variables:
 
 ```ruby
 @kontroller     # the controller that caused the error
@@ -67,7 +67,7 @@ Rails.application.config.middleware.use Exceptify::Rack,
                                         }
 ```
 
-Place your custom sections under `./app/views/exception_notifier/` with the suffix `.text.erb`, e.g. `./app/views/exception_notifier/_my_section1.text.erb`.
+Place your custom sections under `./app/views/exceptify/` with the suffix `.text.erb`, e.g. `./app/views/exceptify/_my_section1.text.erb`.
 
 If your new section requires information that isn't available by default, make sure it is made available to the email using the `exception_data` macro:
 
@@ -78,7 +78,7 @@ class ApplicationController < ActionController::Base
   protected
 
   def log_additional_data
-    request.env['exception_notifier.exception_data'] = {
+    request.env['exceptify.exception_data'] = {
       document: @document,
       person: @person
     }

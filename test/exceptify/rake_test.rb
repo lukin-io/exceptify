@@ -17,7 +17,7 @@ class RakeTest < ActiveSupport::TestCase
   end
 
   test "notifies of exception" do
-    ExceptionNotifier.expects(:notify_exception).with do |ex, opts|
+    Exceptify.expects(:notify_exception).with do |ex, opts|
       data = opts[:data]
       ex.is_a?(RuntimeError) &&
         ex.message == "test exception" &&

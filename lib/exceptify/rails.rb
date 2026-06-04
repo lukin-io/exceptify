@@ -9,8 +9,7 @@ require "exceptify"
 
 module Exceptify
   class Engine < ::Rails::Engine
-    config.exceptify = ExceptionNotifier
-    config.exception_notification = config.exceptify
+    config.exceptify = Exceptify
     config.exceptify.logger = Rails.logger
     config.exceptify.error_grouping_cache = Rails.cache
 

@@ -2,7 +2,7 @@
 
 # Copied/adapted from https://github.com/airbrake/airbrake/blob/master/lib/airbrake/rake.rb
 
-require "exception_notifier"
+require "exceptify"
 require "rake"
 
 Rake::TaskManager.record_task_metadata = true if Rake.const_defined?(:TaskManager)
@@ -10,17 +10,17 @@ Rake::TaskManager.record_task_metadata = true if Rake.const_defined?(:TaskManage
 module Exceptify
   module RakeTaskExtensions
     # A wrapper around the original +#execute+, that catches all errors and
-    # passes them on to ExceptionNotifier.
+    # passes them on to Exceptify.
     def execute(args = nil)
       super
     rescue Exception => e # standard:disable Lint/RescueException
-      ExceptionNotifier.notify_exception(e, data: data_for_exception_notifier(e)) unless e.is_a?(SystemExit)
+      Exceptify.notify_exception(e, data: data_for_exceptify(e)) unless e.is_a?(SystemExit)
       raise e
     end
 
     private
 
-    def data_for_exception_notifier(exception = nil)
+    def data_for_exceptify(exception = nil)
       data = {}
       data[:error_class] = exception.class.name if exception
       data[:error_message] = exception.message if exception
@@ -39,7 +39,7 @@ module Exceptify
 
       if prerequisite_tasks.any?
         data[:rake][:prerequisite_tasks] = prerequisite_tasks.map do |p|
-          p.__send__(:data_for_exception_notifier)[:rake]
+          p.__send__(:data_for_exceptify)[:rake]
         end
       end
 

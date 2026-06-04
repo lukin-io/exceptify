@@ -12,35 +12,35 @@ class RackTest < ActiveSupport::TestCase
   end
 
   teardown do
-    ExceptionNotifier.reset_notifiers!
+    Exceptify.reset_notifiers!
   end
 
   test 'should ignore "X-Cascade" header by default' do
-    ExceptionNotifier.expects(:notify_exception).never
+    Exceptify.expects(:notify_exception).never
     Exceptify::Rack.new(@pass_app).call({})
   end
 
   test 'should notify on "X-Cascade" = "pass" if ignore_cascade_pass option is false' do
-    ExceptionNotifier.expects(:notify_exception).once
+    Exceptify.expects(:notify_exception).once
     Exceptify::Rack.new(@pass_app, ignore_cascade_pass: false).call({})
   end
 
   test "should assign error_grouping if error_grouping is specified" do
-    refute ExceptionNotifier.error_grouping
+    refute Exceptify.error_grouping
     Exceptify::Rack.new(@normal_app, error_grouping: true).call({})
-    assert ExceptionNotifier.error_grouping
+    assert Exceptify.error_grouping
   end
 
   test "should assign notification_trigger if notification_trigger is specified" do
-    assert_nil ExceptionNotifier.notification_trigger
+    assert_nil Exceptify.notification_trigger
     Exceptify::Rack.new(@normal_app, notification_trigger: ->(_i) { true }).call({})
-    assert_respond_to ExceptionNotifier.notification_trigger, :call
+    assert_respond_to Exceptify.notification_trigger, :call
   end
 
   if defined?(Rails) && Rails.respond_to?(:cache)
     test "should set default cache to Rails cache" do
       Exceptify::Rack.new(@normal_app, error_grouping: true).call({})
-      assert_equal Rails.cache, ExceptionNotifier.error_grouping_cache
+      assert_equal Rails.cache, Exceptify.error_grouping_cache
     end
   end
 
@@ -55,7 +55,7 @@ class RackTest < ActiveSupport::TestCase
 
       flunk
     rescue
-      refute env["exception_notifier.delivered"]
+      refute env["exceptify.delivered"]
     end
   end
 
@@ -73,7 +73,7 @@ class RackTest < ActiveSupport::TestCase
 
       flunk
     rescue
-      refute env["exception_notifier.delivered"]
+      refute env["exceptify.delivered"]
     end
   end
 

@@ -3,7 +3,7 @@
 * Require Ruby 3.4.4 or newer.
 * Require Rails 8.0.2 or newer for development and verification.
 * Rename the Rails install generator command to <tt>exceptify:install</tt>.
-* Add <tt>exceptify</tt> require paths while keeping the old <tt>exception_notification</tt> paths compatible.
+* Rename the gem, require paths, namespace, templates, and documentation to <tt>exceptify</tt>.
 
 == 5.0.1
 
@@ -20,8 +20,6 @@
 (All by @kmcphillips)
 
 == 4.6.0
-
-https://github.com/smartinez87/exception_notification/releases/tag/v4.6.0
 
 * Rails 8 compatibility (@kmcphillips)
 * Exception data for teams channel notification (@rachitpant)
@@ -85,7 +83,7 @@ https://github.com/smartinez87/exception_notification/releases/tag/v4.6.0
   * Add SNS notifier (by @FLarra)
   * Add Google Chats notifier (by @renatolond)
   * Align output of section-headers consistently (by @kronn)
-  * ExceptionNotifier.notify_exception receives block & pass it to each notifier (by @pocke)
+  * Exceptify.notify_exception receives block & pass it to each notifier (by @pocke)
   * Update Travis to latest rubies (by @lostapathy)
 
 * bug fixes
@@ -182,7 +180,7 @@ https://github.com/smartinez87/exception_notification/releases/tag/v4.6.0
   * Add resque support (by @jweslley)
   * Better style for html views (by @jweslley)
   * Support customizable Mailer class (by @Bishop)
-  * Turn ExceptionNotification Rails agnostic (by @jweslley)
+  * Turn Exceptify Rails agnostic (by @jweslley)
   * Support custom ignore exceptions for background notifications (by @jweslley)
   * Be able to implement custom notifiers (by @jweslley)
   * Add Webhook notifier (by @jweslley)

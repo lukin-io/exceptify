@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-gem "exception_notification", path: "../../"
+gem "exceptify", path: "../../"
 
 gem "foreman"
 gem "mailcatcher"

@@ -28,7 +28,7 @@ Rails.application.config.middleware.use Exceptify::Rack,
                                         }
 ```
 
-The slack notification will include any data saved under `env['exception_notifier.exception_data']`.
+The slack notification will include any data saved under `env['exceptify.exception_data']`.
 
 An example of how to send the server name to Slack in Rails (put this code in application_controller.rb):
 
@@ -36,7 +36,7 @@ An example of how to send the server name to Slack in Rails (put this code in ap
 before_action :set_notification
 
 def set_notification
-  request.env['exception_notifier.exception_data'] = { 'server' => request.env['SERVER_NAME'] }
+  request.env['exceptify.exception_data'] = { 'server' => request.env['SERVER_NAME'] }
   # can be any key-value pairs
 end
 ```
@@ -66,7 +66,7 @@ need to send a notification to a different slack channel. Simply add the
 `channel` option when calling `.notify_exception`
 
 ```ruby
-ExceptionNotifier.notify_exception(
+Exceptify.notify_exception(
   exception,
   env: request.env,
   channel: '#my-custom-channel', # Make sure the channel name starts with `#`
@@ -88,7 +88,7 @@ the `pre_callback` option when defining the middleware.
 ```
 - `message_opts` is the hash you want to append to if you need to add an option.
 - `options` is the hash containing the values when you call
-  `ExceptionNotifier.notify_exception`
+  `Exceptify.notify_exception`
 
 An example implementation would be:
 ```ruby
@@ -104,7 +104,7 @@ config.middleware.use Exceptify::Rack,
 ```
 Then when calling from within your application code:
 ```ruby
-ExceptionNotifier.notify_exception(
+Exceptify.notify_exception(
   exception,
   env: request.env,
   ping_option: 'value',

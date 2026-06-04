@@ -1,18 +1,18 @@
 # Exceptify
 
-[![Gem Version](https://badge.fury.io/rb/exception_notification.svg)](https://badge.fury.io/rb/exception_notification)
+[![Gem Version](https://badge.fury.io/rb/exceptify.svg)](https://badge.fury.io/rb/exceptify)
 [![Build Status](https://github.com/lukin-io/exceptify/actions/workflows/ci.yml/badge.svg)](https://github.com/lukin-io/exceptify/actions/workflows/ci.yml)
 
 Exceptify sends exception reports from Rails and Rack applications to the channels your team already watches: email, chat, webhooks, and monitoring tools.
 
-This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify`, while keeping the existing gem name and public API compatible for applications that already use `exception_notification`.
+This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify` with the `exceptify` gem name and `Exceptify` API.
 
 ## Quick Start
 
 Add the gem to your Rails application's `Gemfile`:
 
 ```ruby
-gem "exception_notification"
+gem "exceptify"
 ```
 
 Install it and generate the initializer:
@@ -32,7 +32,7 @@ require "exceptify/rake"
 Exceptify.configure do |config|
   config.add_notifier :email, {
     email_prefix: "[#{Rails.env.upcase}] ",
-    sender_address: %("Exception Notifier" <notifier@example.com>),
+    sender_address: %("Exceptify" <notifier@example.com>),
     exception_recipients: %w[exceptions@example.com]
   }
 
@@ -102,7 +102,7 @@ The gem has a long history in the Rails ecosystem. The original code was extract
 Add the gem to your application's `Gemfile`:
 
 ```ruby
-gem "exception_notification"
+gem "exceptify"
 ```
 
 Install it:
@@ -114,19 +114,19 @@ bundle install
 To use this maintained repository directly before a release is published to RubyGems:
 
 ```ruby
-gem "exception_notification", git: "https://github.com/lukin-io/exceptify.git"
+gem "exceptify", git: "https://github.com/lukin-io/exceptify.git"
 ```
 
 For local gem development, point a test application at your checkout:
 
 ```ruby
-gem "exception_notification", path: "../exceptify"
+gem "exceptify", path: "../exceptify"
 ```
 
 If the application should keep a Git source in its `Gemfile` while Bundler uses a local checkout, configure a local override from that application:
 
 ```bash
-bundle config set local.exception_notification ../exceptify
+bundle config set local.exceptify ../exceptify
 bundle install
 ```
 
@@ -173,7 +173,7 @@ Then register both notifiers:
 Exceptify.configure do |config|
   config.add_notifier :email, {
     email_prefix: "[#{Rails.env.upcase}] ",
-    sender_address: %("Exception Notifier" <notifier@example.com>),
+    sender_address: %("Exceptify" <notifier@example.com>),
     exception_recipients: %w[exceptions@example.com]
   }
 
@@ -200,7 +200,7 @@ class ApplicationController < ActionController::Base
   private
 
   def prepare_exceptify_notification
-    request.env["exception_notifier.exception_data"] = {
+    request.env["exceptify.exception_data"] = {
       current_user_id: current_user&.id,
       account_id: current_account&.id,
       request_id: request.request_id
@@ -222,7 +222,7 @@ class OrdersController < ApplicationController
   private
 
   def payment_gateway_timeout(exception)
-    ExceptionNotifier.notify_exception(
+    Exceptify.notify_exception(
       exception,
       env: request.env,
       data: {
@@ -242,7 +242,7 @@ end
 begin
   ImportCustomers.call(file_path)
 rescue => exception
-  ExceptionNotifier.notify_exception(
+  Exceptify.notify_exception(
     exception,
     data: {
       job: "ImportCustomers",
@@ -415,7 +415,7 @@ class RebuildSearchIndexJob
   def perform(account_id)
     RebuildSearchIndex.call(account_id)
   rescue => exception
-    ExceptionNotifier.notify_exception(
+    Exceptify.notify_exception(
       exception,
       data: {
         job: self.class.name,
@@ -438,7 +438,7 @@ require "exceptify"
 use Exceptify::Rack,
   email: {
     email_prefix: "[RACK ERROR] ",
-    sender_address: %("Exception Notifier" <notifier@example.com>),
+    sender_address: %("Exceptify" <notifier@example.com>),
     exception_recipients: %w[exceptions@example.com]
   },
   ignore_exceptions: ["Sinatra::NotFound"],
@@ -449,7 +449,7 @@ Sinatra users can also review the [example application](examples/sinatra).
 
 ## Maintenance
 
-This repository is the current home for the `exception_notification` gem. The gem name and public API remain compatible for existing applications, while maintenance focuses on modern Ruby and Rails support, clear documentation, and practical bug fixes.
+This repository is the current home for the `exceptify` gem. Maintenance focuses on modern Ruby and Rails support, clear documentation, and practical bug fixes around the `Exceptify` API.
 
 Issues and pull requests are welcome when they include enough context to reproduce the behavior.
 

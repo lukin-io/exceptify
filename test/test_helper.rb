@@ -8,8 +8,8 @@ require "mocha/minitest"
 require "active_support/test_case"
 require "action_mailer"
 
-ExceptionNotifier.testing_mode!
-require "support/exception_notifier_helper"
+Exceptify.testing_mode!
+require "support/exceptify_helper"
 
 Time.zone = "UTC"
 ActionMailer::Base.delivery_method = :test

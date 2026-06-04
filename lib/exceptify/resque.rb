@@ -19,7 +19,7 @@ module Exceptify
         worker: worker.to_s
       }
 
-      ExceptionNotifier.notify_exception(exception, data: {resque: data})
+      Exceptify.notify_exception(exception, data: {resque: data})
     end
   end
 end

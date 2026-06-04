@@ -14,29 +14,22 @@ class ExceptifyRequirePathsTest < ActiveSupport::TestCase
 
       abort "missing Exceptify::VERSION" unless Exceptify::VERSION
       abort "missing Exceptify::Rack" unless Exceptify::Rack
-      abort "missing compatibility alias" unless ExceptionNotification == Exceptify
     RUBY
   end
 
-  test "keeps the old exception_notification require path compatible" do
+  test "loads the rack require path" do
     assert_subprocess_success <<~RUBY
-      require "exception_notification"
+      require "exceptify/rack"
 
-      abort "missing old namespace" unless ExceptionNotification::VERSION
-      abort "missing old rack constant" unless ExceptionNotification::Rack
-      abort "missing new namespace" unless Exceptify::VERSION
-      abort "namespaces differ" unless ExceptionNotification == Exceptify
+      abort "missing Exceptify::Rack" unless Exceptify::Rack
     RUBY
   end
 
-  test "keeps old nested require paths compatible" do
+  test "loads the version require path" do
     assert_subprocess_success <<~RUBY
-      require "exception_notification/rack"
-      require "exception_notification/version"
+      require "exceptify/version"
 
-      abort "missing old rack constant" unless ExceptionNotification::Rack
-      abort "missing new rack constant" unless Exceptify::Rack
-      abort "missing old version constant" unless ExceptionNotification::VERSION
+      abort "missing Exceptify::VERSION" unless Exceptify::VERSION
     RUBY
   end
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "exception_notifier"
+require "exceptify"
 
 module Exceptify
   class Rack
@@ -9,7 +9,7 @@ module Exceptify
     def initialize(app, options = {})
       @app = app
 
-      ExceptionNotifier.tap do |en|
+      Exceptify.tap do |en|
         en.ignored_exceptions = options.delete(:ignore_exceptions) if options.key?(:ignore_exceptions)
         en.error_grouping = options.delete(:error_grouping) if options.key?(:error_grouping)
         en.error_grouping_period = options.delete(:error_grouping_period) if options.key?(:error_grouping_period)
@@ -24,7 +24,7 @@ module Exceptify
 
       if options.key?(:ignore_if)
         rack_ignore = options.delete(:ignore_if)
-        ExceptionNotifier.ignore_if do |exception, opts|
+        Exceptify.ignore_if do |exception, opts|
           opts.key?(:env) && rack_ignore.call(opts[:env], exception)
         end
       end
@@ -32,18 +32,18 @@ module Exceptify
       if options.key?(:ignore_notifier_if)
         rack_ignore_by_notifier = options.delete(:ignore_notifier_if)
         rack_ignore_by_notifier.each do |notifier, proc|
-          ExceptionNotifier.ignore_notifier_if(notifier) do |exception, opts|
+          Exceptify.ignore_notifier_if(notifier) do |exception, opts|
             opts.key?(:env) && proc.call(opts[:env], exception)
           end
         end
       end
 
-      ExceptionNotifier.ignore_crawlers(options.delete(:ignore_crawlers)) if options.key?(:ignore_crawlers)
+      Exceptify.ignore_crawlers(options.delete(:ignore_crawlers)) if options.key?(:ignore_crawlers)
 
       @ignore_cascade_pass = options.delete(:ignore_cascade_pass) { true }
 
       options.each do |notifier_name, opts|
-        ExceptionNotifier.register_exception_notifier(notifier_name, opts)
+        Exceptify.register_notifier(notifier_name, opts)
       end
     end
 
@@ -58,7 +58,7 @@ module Exceptify
 
       response
     rescue Exception => e # standard:disable Lint/RescueException
-      env["exception_notifier.delivered"] = true if ExceptionNotifier.notify_exception(e, env: env)
+      env["exceptify.delivered"] = true if Exceptify.notify_exception(e, env: env)
 
       raise e unless e.is_a?(CascadePassException)
 

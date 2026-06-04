@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "exception_notifier"
+require "exceptify"
 
 module Exceptify
   module Rails
@@ -14,14 +14,14 @@ module Exceptify
         at_exit do
           exception = $ERROR_INFO
           if exception && !exception.is_a?(SystemExit)
-            ExceptionNotifier.notify_exception(exception, data: data_for_exception_notifier(exception))
+            Exceptify.notify_exception(exception, data: data_for_exceptify(exception))
           end
         end
       end
 
       private
 
-      def data_for_exception_notifier(exception = nil)
+      def data_for_exceptify(exception = nil)
         data = {}
         data[:error_class] = exception.class.name if exception
         data[:error_message] = exception.message if exception

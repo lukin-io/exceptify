@@ -33,7 +33,7 @@ class SinatraApp < Sinatra::Base
     begin
       1 / 0
     rescue => e
-      ExceptionNotifier.notify_exception(e, data: {msg: "Cannot divide by zero!"})
+      Exceptify.notify_exception(e, data: {msg: "Cannot divide by zero!"})
     end
     'Check email at <a href="http://localhost:1080">mailcatcher</a>.'
   end

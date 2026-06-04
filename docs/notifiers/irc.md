@@ -35,7 +35,7 @@ Rails.application.config.middleware.use Exceptify::Rack,
                                           port: 6697,
                                           channel: '#log',
                                           ssl: true,
-                                          prefix: '[Exception Notification]',
+                                          prefix: '[Exceptify]',
                                           recipients: ['peter', 'michael', 'samir']
                                         }
 ```
@@ -52,7 +52,7 @@ The domain name of your IRC server.
 
 *String, optional*
 
-The message will appear from this nick. Default : 'ExceptionNotifierBot'.
+The message will appear from this nick. Default : 'ExceptifyBot'.
 
 ##### password
 
