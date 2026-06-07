@@ -46,9 +46,22 @@ class ResqueTest < ActiveSupport::TestCase
     @worker.work(0)
   end
 
+  test "does not notify exception when job succeeds" do
+    Exceptify.expects(:notify_exception).never
+
+    Resque::Job.create(:jobs, GoodJob)
+    @worker.work(0)
+  end
+
   class BadJob
     def self.perform
       raise "Bad job!"
+    end
+  end
+
+  class GoodJob
+    def self.perform
+      true
     end
   end
 end

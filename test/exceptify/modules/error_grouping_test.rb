@@ -89,6 +89,24 @@ class ErrorGroupTest < ActiveSupport::TestCase
     assert_equal 1, options[:accumulated_errors_count]
   end
 
+  test "edge: service groups errors with fallback cache when primary cache is nil" do
+    logger = mock
+    logger.expects(:warn).never
+    service = Exceptify::ErrorGrouping::Service.new(
+      cache: nil,
+      fallback_cache_store: ActiveSupport::Cache::MemoryStore.new,
+      period: 5.minutes,
+      notification_trigger: nil,
+      logger: logger
+    )
+
+    options = {}
+    service.group_error!(@exception, options)
+    service.group_error!(@exception, options)
+
+    assert_equal 2, options[:accumulated_errors_count]
+  end
+
   test "should not group error if different exception in .group_error!" do
     options1 = {}
     TestModule.expects(:save_error_count).with { |key, count| key.is_a?(String) && count == 1 }.times(4).returns(true)

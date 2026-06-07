@@ -1,14 +1,9 @@
 # frozen_string_literal: true
 
-# this extension allows Exceptify to reset all the glocal settings
-# (i.e. class vars that otherwise remains during the test)
-# please remembeer to call this method each time after you set such settings
-# to prevent order dependent test fails.
+# Reset global test configuration between examples to avoid order-dependent failures.
 module Exceptify
   def self.reset_notifiers!
-    @@notifiers = {}
-    clear_ignore_conditions!
-    Exceptify.error_grouping = false
-    Exceptify.notification_trigger = nil
+    reset!
+    testing_mode!
   end
 end

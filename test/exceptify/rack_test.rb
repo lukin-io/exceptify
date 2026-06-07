@@ -27,36 +27,76 @@ class RackTest < ActiveSupport::TestCase
 
   test "should assign error_grouping if error_grouping is specified" do
     refute Exceptify.error_grouping
-    Exceptify::Rack.new(@normal_app, error_grouping: true).call({})
-    assert Exceptify.error_grouping
+    middleware = Exceptify::Rack.new(@normal_app, error_grouping: true)
+    middleware.call({})
+    assert middleware.configuration.error_grouping
+    refute Exceptify.error_grouping
   end
 
   test "should assign notification_trigger if notification_trigger is specified" do
     assert_nil Exceptify.notification_trigger
-    Exceptify::Rack.new(@normal_app, notification_trigger: ->(_i) { true }).call({})
-    assert_respond_to Exceptify.notification_trigger, :call
+    middleware = Exceptify::Rack.new(@normal_app, notification_trigger: ->(_i) { true })
+    middleware.call({})
+    assert_respond_to middleware.configuration.notification_trigger, :call
+    assert_nil Exceptify.notification_trigger
   end
 
   if defined?(Rails) && Rails.respond_to?(:cache)
     test "should set default cache to Rails cache" do
-      Exceptify::Rack.new(@normal_app, error_grouping: true).call({})
-      assert_equal Rails.cache, Exceptify.error_grouping_cache
+      middleware = Exceptify::Rack.new(@normal_app, error_grouping: true)
+      middleware.call({})
+      assert_equal Rails.cache, middleware.configuration.error_grouping_cache
     end
   end
 
-  test "should ignore exceptions with Usar Agent in ignore_crawlers" do
+  test "success: keeps notifier options isolated per middleware instance" do
+    exception_app = Object.new
+    exception_app.stubs(:call).raises(RuntimeError)
+
+    calls = []
+    first = Exceptify::Rack.new(exception_app, first: ->(_exception, _options) { calls << :first })
+    second = Exceptify::Rack.new(exception_app, second: ->(_exception, _options) { calls << :second })
+
+    assert_raises(RuntimeError) { first.call({}) }
+    assert_raises(RuntimeError) { second.call({}) }
+
+    assert_equal %i[first second], calls
+    assert_empty Exceptify.notifiers
+  end
+
+  test "failure: local ignore_if does not leak to global configuration" do
+    exception_app = Object.new
+    exception_app.stubs(:call).raises(RuntimeError)
+    Exceptify.add_notifier(:global, ->(_exception, _options) { flunk "global notifier should be ignored locally" })
+
+    middleware = Exceptify::Rack.new(exception_app, ignore_if: ->(_env, _exception) { true })
+
+    assert_raises(RuntimeError) { middleware.call({}) }
+    refute Exceptify.configuration.ignored?(RuntimeError.new, env: {})
+  end
+
+  test "edge: middleware without local options uses the global facade" do
+    exception_app = Object.new
+    exception_app.stubs(:call).raises(RuntimeError)
+    Exceptify.expects(:notify_exception).once.returns(true)
+    env = {}
+
+    assert_raises(RuntimeError) { Exceptify::Rack.new(exception_app).call(env) }
+
+    assert env["exceptify.delivered"]
+  end
+
+  test "should ignore exceptions with User Agent in ignore_crawlers" do
     exception_app = Object.new
     exception_app.stubs(:call).raises(RuntimeError)
 
     env = {"HTTP_USER_AGENT" => "Mozilla/5.0 (compatible; Crawlerbot/2.1;)"}
 
-    begin
+    assert_raises(RuntimeError) do
       Exceptify::Rack.new(exception_app, ignore_crawlers: %w[Crawlerbot]).call(env)
-
-      flunk
-    rescue
-      refute env["exceptify.delivered"]
     end
+
+    refute env["exceptify.delivered"]
   end
 
   test "should ignore exceptions if ignore_if condition is met" do
@@ -65,16 +105,14 @@ class RackTest < ActiveSupport::TestCase
 
     env = {}
 
-    begin
+    assert_raises(RuntimeError) do
       Exceptify::Rack.new(
         exception_app,
         ignore_if: ->(_env, exception) { exception.is_a? RuntimeError }
       ).call(env)
-
-      flunk
-    rescue
-      refute env["exceptify.delivered"]
     end
+
+    refute env["exceptify.delivered"]
   end
 
   test "should ignore exceptions with notifiers that satisfies ignore_notifier_if condition" do
@@ -87,7 +125,7 @@ class RackTest < ActiveSupport::TestCase
 
     env = {}
 
-    begin
+    assert_raises(RuntimeError) do
       Exceptify::Rack.new(
         exception_app,
         ignore_notifier_if: {
@@ -96,11 +134,9 @@ class RackTest < ActiveSupport::TestCase
         notifier1: notifier1,
         notifier2: notifier2
       ).call(env)
-
-      flunk
-    rescue
-      refute notifier1_called
-      assert notifier2_called
     end
+
+    refute notifier1_called
+    assert notifier2_called
   end
 end

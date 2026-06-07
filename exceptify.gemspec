@@ -33,7 +33,6 @@ Gem::Specification.new do |s|
   s.add_dependency("cgi")
 
   s.add_development_dependency "aws-sdk-sns", "~> 1"
-  s.add_development_dependency "carrier-pigeon", ">= 0.7.0"
   s.add_development_dependency "dogapi", ">= 1.23.0"
   s.add_development_dependency "httparty", "~> 0.10.2"
   s.add_development_dependency "mocha", ">= 0.13.0"

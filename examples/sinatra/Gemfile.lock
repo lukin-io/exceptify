@@ -1,7 +1,7 @@
 PATH
   remote: ../..
   specs:
-    exceptify (5.0.1)
+    exceptify (1.0.0)
       actionmailer (>= 7.1, < 9)
       activesupport (>= 7.1, < 9)
       cgi

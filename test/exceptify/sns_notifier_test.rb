@@ -31,6 +31,16 @@ class SnsNotifierTest < ActiveSupport::TestCase
     Exceptify::SnsNotifier.new(@options)
   end
 
+  test "success: uses injected sns client without aws credentials" do
+    client = FakeSnsClient.new
+    sns_notifier = Exceptify::SnsNotifier.new(client: client, topic_arn: "topicARN")
+
+    sns_notifier.call(@exception)
+
+    assert_equal "topicARN", client.published_messages.first[:topic_arn]
+    assert_includes client.published_messages.first[:message], "A MyException occured in background"
+  end
+
   test "should raise an exception if region is not received" do
     @options[:region] = nil
 
@@ -56,6 +66,22 @@ class SnsNotifierTest < ActiveSupport::TestCase
     end
 
     assert_equal "You must provide 'secret_access_key' option", error.message
+  end
+
+  test "edge: sends a sns notification without backtrace" do
+    @exception.stubs(:backtrace).returns(nil)
+
+    Aws::SNS::Client.any_instance.expects(:publish).with(
+      topic_arn: "topicARN",
+      message: "A MyException occured in background\n" \
+             "Exception: undefined method 'method=' for Empty\n" \
+             "Hostname: example.com\n" \
+             "Data: {}\n",
+      subject: "[App Exception] - A MyException occurred"
+    )
+
+    sns_notifier = Exceptify::SnsNotifier.new(@options)
+    sns_notifier.call(@exception)
   end
 
   # call
@@ -177,5 +203,17 @@ class SnsNotifierTest < ActiveSupport::TestCase
       "backtrace line 5",
       "backtrace line 6"
     ]
+  end
+end
+
+class FakeSnsClient
+  attr_reader :published_messages
+
+  def initialize
+    @published_messages = []
+  end
+
+  def publish(message)
+    @published_messages << message
   end
 end

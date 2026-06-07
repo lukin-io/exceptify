@@ -4,26 +4,30 @@ require "test_helper"
 require "httparty"
 
 class WebhookNotifierTest < ActiveSupport::TestCase
-  test "should send webhook notification if properly configured" do
-    Exceptify::WebhookNotifier.stubs(:new).returns(Object.new)
-    webhook = Exceptify::WebhookNotifier.new(url: "http://localhost:8000")
-    webhook.stubs(:call).returns(fake_response)
-    response = webhook.call(fake_exception)
+  test "should send webhook notification with request payload if env is present" do
+    url = "http://localhost:8000"
+    http_client = FakeWebhookHTTPClient.new
+    webhook = Exceptify::WebhookNotifier.new(url: url, http_client: http_client)
 
-    refute_nil response
-    assert_equal response[:status], 200
-    assert_equal response[:body][:exception][:error_class], "ZeroDivisionError"
-    assert_includes response[:body][:exception][:message], "divided by 0"
-    assert_includes response[:body][:exception][:backtrace], "/exceptify/test/webhook_notifier_test.rb:48"
+    webhook.call(fake_exception, env: webhook_env)
 
-    assert response[:body][:request][:cookies].key?(:cookie_item1)
-    assert_equal response[:body][:request][:url], "http://example.com/example"
-    assert_equal response[:body][:request][:ip_address], "192.168.1.1"
-    assert response[:body][:request][:environment].key?(:env_item1)
-    assert_equal response[:body][:request][:controller], "#<ControllerName:0x007f9642a04d00>"
-    assert response[:body][:request][:session].key?(:session_item1)
-    assert response[:body][:request][:parameters].key?(:controller)
-    assert response[:body][:data][:extra_data].key?(:data_item1)
+    method, request_url, params = http_client.requests.first
+    assert_equal :post, method
+    assert_equal url, request_url
+
+    body = params[:body]
+    assert_equal Socket.gethostname, body[:server]
+    assert_equal Process.pid, body[:process]
+    assert_equal "ZeroDivisionError", body[:exception][:error_class]
+    assert_includes body[:exception][:message], "divided by 0"
+    assert_includes body[:exception][:backtrace].first, "webhook_notifier_test.rb"
+    assert_equal({account_id: 7}, body[:data])
+    assert_equal "http://example.com/example?id=foo&secret=secret", body[:request][:url]
+    assert_equal "GET", body[:request][:http_method]
+    assert_equal "192.168.1.1", body[:request][:ip_address]
+    assert_equal({"id" => "foo", "secret" => "[FILTERED]"}, body[:request][:parameters])
+    assert_equal({"session_id" => "session-1"}, body[:session])
+    assert_equal "example.com", body[:environment]["HTTP_HOST"]
   end
 
   test "should send webhook notification with correct params data" do
@@ -36,10 +40,51 @@ class WebhookNotifierTest < ActiveSupport::TestCase
     webhook.call(fake_exception)
   end
 
-  test "should call pre/post_callback if specified" do
-    HTTParty.expects(:send).returns(fake_response)
-    webhook = Exceptify::WebhookNotifier.new(url: "http://localhost:8000")
+  test "success: uses injected http client" do
+    url = "http://localhost:8000"
+    fake_exception.stubs(:backtrace).returns("the backtrace")
+    http_client = FakeWebhookHTTPClient.new
+    webhook = Exceptify::WebhookNotifier.new(url: url, http_client: http_client)
+
     webhook.call(fake_exception)
+
+    assert_equal [:post, url, fake_params], http_client.requests.first
+  end
+
+  test "failure: raises if webhook url is missing" do
+    webhook = Exceptify::WebhookNotifier.new({})
+
+    error = assert_raises ArgumentError do
+      webhook.call(fake_exception)
+    end
+
+    assert_equal "You must provide 'url' option", error.message
+  end
+
+  test "edge: raises if webhook url is blank" do
+    webhook = Exceptify::WebhookNotifier.new(url: "")
+
+    error = assert_raises ArgumentError do
+      webhook.call(fake_exception)
+    end
+
+    assert_equal "You must provide 'url' option", error.message
+  end
+
+  test "should call pre/post_callback if specified" do
+    pre_callback_called = 0
+    post_callback_called = 0
+
+    HTTParty.expects(:send).returns(fake_response)
+    webhook = Exceptify::WebhookNotifier.new(
+      url: "http://localhost:8000",
+      pre_callback: proc { |*| pre_callback_called += 1 },
+      post_callback: proc { |*| post_callback_called += 1 }
+    )
+    webhook.call(fake_exception)
+
+    assert_equal 1, pre_callback_called
+    assert_equal 1, post_callback_called
   end
 
   private
@@ -73,7 +118,7 @@ class WebhookNotifierTest < ActiveSupport::TestCase
     params = {
       body: {
         server: Socket.gethostname,
-        process: $PROCESS_ID,
+        process: Process.pid,
         exception: {
           error_class: "ZeroDivisionError",
           message: "divided by 0".inspect,
@@ -88,11 +133,37 @@ class WebhookNotifierTest < ActiveSupport::TestCase
     params
   end
 
+  def webhook_env
+    Rack::MockRequest.env_for(
+      "/example",
+      "HTTP_HOST" => "example.com",
+      "REMOTE_ADDR" => "192.168.1.1",
+      "HTTP_USER_AGENT" => "Rails Testing",
+      "action_dispatch.parameter_filter" => ["secret"],
+      "rack.session" => {"session_id" => "session-1"},
+      "rack.session.options" => {},
+      "exceptify.exception_data" => {account_id: 7},
+      :params => {id: "foo", secret: "secret"}
+    )
+  end
+
   def fake_exception
     @fake_exception ||= begin
       5 / 0
     rescue => e
       e
     end
+  end
+end
+
+class FakeWebhookHTTPClient
+  attr_reader :requests
+
+  def initialize
+    @requests = []
+  end
+
+  def send(method, url, options)
+    @requests << [method, url, options]
   end
 end

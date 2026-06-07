@@ -14,6 +14,7 @@ class ExceptifyRequirePathsTest < ActiveSupport::TestCase
 
       abort "missing Exceptify::VERSION" unless Exceptify::VERSION
       abort "missing Exceptify::Rack" unless Exceptify::Rack
+      abort "require exceptify should not load Rails" if defined?(Rails)
     RUBY
   end
 
@@ -22,6 +23,7 @@ class ExceptifyRequirePathsTest < ActiveSupport::TestCase
       require "exceptify/rack"
 
       abort "missing Exceptify::Rack" unless Exceptify::Rack
+      abort "require exceptify/rack should not load Rails" if defined?(Rails)
     RUBY
   end
 

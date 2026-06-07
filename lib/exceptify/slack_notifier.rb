@@ -7,24 +7,30 @@ module Exceptify
     attr_accessor :notifier
 
     def initialize(options)
-      super
-      begin
-        @ignore_data_if = options[:ignore_data_if]
-        @backtrace_lines = options.fetch(:backtrace_lines, 10)
-        @additional_fields = options[:additional_fields]
+      options = options.dup
+      fail_silently = options.delete(:fail_silently) { false }
+      injected_notifier = options.delete(:notifier)
+      super()
+      self.base_options = options
 
-        webhook_url = options.fetch(:webhook_url)
-        @message_opts = options.fetch(:additional_parameters, {})
-        @color = @message_opts.delete(:color) { "danger" }
-        @notifier = Slack::Notifier.new webhook_url, options
-      rescue
-        @notifier = nil
-      end
+      @ignore_data_if = options[:ignore_data_if]
+      @backtrace_lines = options.fetch(:backtrace_lines, 10)
+      @additional_fields = options[:additional_fields]
+      @message_opts = options.fetch(:additional_parameters, {}).dup
+      @color = @message_opts.delete(:color) { "danger" }
+
+      @notifier = injected_notifier || build_notifier(options)
+    rescue => e
+      raise unless fail_silently
+
+      log_configuration_error(e)
+      @notifier = nil
     end
 
     def call(exception, options = {})
+      notification = Notification.new(exception, options, backtrace_cleaner: self)
       clean_message = exception.message.tr("`", "'")
-      attchs = attchs(exception, clean_message, options)
+      attchs = attchs(notification, clean_message)
 
       return unless valid?
 
@@ -52,16 +58,37 @@ module Exceptify
 
     private
 
-    def attchs(exception, clean_message, options)
-      text, data = information_from_options(exception.class, options)
-      backtrace = clean_backtrace(exception) if exception.backtrace
-      fields = fields(clean_message, backtrace, data)
+    def build_notifier(options)
+      webhook_url = options[:webhook_url]
+      raise ArgumentError, "You must provide 'webhook_url' option" if blank?(webhook_url)
+      unless defined?(::Slack::Notifier)
+        raise ArgumentError, "Slack notifier requires the 'slack-notifier' gem"
+      end
+
+      Slack::Notifier.new(webhook_url, options)
+    end
+
+    def blank?(value)
+      value.nil? || (value.respond_to?(:empty?) && value.empty?)
+    end
+
+    def log_configuration_error(error)
+      Exceptify.logger&.warn(
+        "Slack notifier disabled: #{error.class}: #{error.message}"
+      )
+    end
+
+    def attchs(notification, clean_message)
+      text, data = information_from_notification(notification)
+      backtrace = notification.backtrace
+      fields = fields(notification, clean_message, backtrace, data)
 
       [color: @color, text: text, fields: fields, mrkdwn_in: %w[text fields]]
     end
 
-    def information_from_options(exception_class, options)
-      errors_count = options[:accumulated_errors_count].to_i
+    def information_from_notification(notification)
+      errors_count = notification.options[:accumulated_errors_count].to_i
+      exception_class = notification.exception.class
 
       measure_word = if errors_count > 1
         errors_count
@@ -70,17 +97,15 @@ module Exceptify
       end
 
       exception_name = "*#{measure_word}* `#{exception_class}`"
-      env = options[:env]
+      env = notification.env
+      data = notification.data
 
-      options[:headers] ||= {}
-      options[:headers]["Content-Type"] = "application/json"
+      notification.options[:headers] ||= {}
+      notification.options[:headers]["Content-Type"] = "application/json"
 
       if env.nil?
-        data = options[:data] || {}
         text = "#{exception_name} *occured in background*\n"
       else
-        data = (env["exceptify.exception_data"] || {}).merge(options[:data] || {})
-
         kontroller = env["action_controller.instance"]
         request = "#{env["REQUEST_METHOD"]} <#{env["REQUEST_URI"]}>"
         text = "#{exception_name} *occurred while* `#{request}`"
@@ -91,13 +116,13 @@ module Exceptify
       [text, data]
     end
 
-    def fields(clean_message, backtrace, data)
+    def fields(notification, clean_message, backtrace, data)
       fields = [
         {title: "Exception", value: clean_message},
-        {title: "Hostname", value: Socket.gethostname}
+        {title: "Hostname", value: notification.hostname}
       ]
 
-      if backtrace
+      unless backtrace.empty?
         formatted_backtrace = "```#{backtrace.first(@backtrace_lines).join("\n")}```"
         fields << {title: "Backtrace", value: formatted_backtrace}
       end

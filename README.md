@@ -5,7 +5,7 @@
 
 Exceptify sends exception reports from Rails and Rack applications to the channels your team already watches: email, chat, webhooks, and monitoring tools.
 
-This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify` with the `exceptify` gem name and `Exceptify` API.
+This repository is maintained by [@lukin-io](https://github.com/lukin-io) as `lukin-io/exceptify` with the `exceptify` gem name and `Exceptify` API. Version `1.0.0` starts the maintained Exceptify release line.
 
 ## Quick Start
 
@@ -85,17 +85,18 @@ It supports:
 
 * Rails integration through a generator and initializer.
 * Rack middleware configuration for Rails, Sinatra, and other Rack apps.
-* Built-in notifiers for email, Slack, Mattermost, Teams, IRC, Amazon SNS, Google Chat, Datadog, HipChat, and webhooks.
+* Built-in notifiers for email, Slack, Teams, Amazon SNS, Datadog, and webhooks.
 * Manual reporting for rescued exceptions, background jobs, scripts, rake tasks, and runners.
 * Ignore rules, crawler filtering, per-notifier filtering, and repeated-error grouping.
 
 ## Compatibility
 
+* Exceptify 1.0.0 or newer.
 * Ruby 3.4.4 or newer.
 * Rails 8.0.2 or newer, below Rails 9.
 * Rack applications, including Sinatra.
 
-The gem has a long history in the Rails ecosystem. The original code was extracted from Rails years ago, and this repository continues maintenance for modern Ruby and Rails versions.
+The changelog starts at `1.0.0` for the maintained `exceptify` release line.
 
 ## Installation
 
@@ -111,7 +112,7 @@ Install it:
 bundle install
 ```
 
-To use this maintained repository directly before a release is published to RubyGems:
+To use this maintained repository directly from Git:
 
 ```ruby
 gem "exceptify", git: "https://github.com/lukin-io/exceptify.git"
@@ -156,6 +157,7 @@ require "exceptify/rails"
 ```
 
 The initializer is too late for runner callbacks. You can still keep notifier configuration in `config/initializers/exceptify.rb`.
+The runner hook is guarded, so loading the integration more than once does not install duplicate `at_exit` callbacks.
 
 ## Common Workflows
 
@@ -270,19 +272,39 @@ config.filter_parameters += [
 
 ## Notifiers
 
-Built-in notifier docs:
+Built-in notifier docs and support status:
 
-* [Email](docs/notifiers/email.md)
-* [Slack](docs/notifiers/slack.md)
-* [Mattermost](docs/notifiers/mattermost.md)
-* [Teams](docs/notifiers/teams.md)
-* [IRC](docs/notifiers/irc.md)
-* [Amazon SNS](docs/notifiers/sns.md)
-* [Google Chat](docs/notifiers/google_chat.md)
-* [Datadog](docs/notifiers/datadog.md)
-* [HipChat](docs/notifiers/hipchat.md)
-* [WebHook](docs/notifiers/webhook.md)
-* [Custom notifiers](docs/notifiers/custom.md)
+| Notifier | Status | Docs |
+| --- | --- | --- |
+| Email | Supported | [Email](docs/notifiers/email.md) |
+| Slack | Supported | [Slack](docs/notifiers/slack.md) |
+| Teams | Supported | [Teams](docs/notifiers/teams.md) |
+| Amazon SNS | Supported | [Amazon SNS](docs/notifiers/sns.md) |
+| Datadog | Supported | [Datadog](docs/notifiers/datadog.md) |
+| WebHook | Supported | [WebHook](docs/notifiers/webhook.md) |
+| Custom notifiers | Supported extension point | [Custom notifiers](docs/notifiers/custom.md) |
+
+### Notifier Setup Rules
+
+Network notifiers validate required options during setup. Missing `webhook_url`, `url`, or AWS credentials raise `ArgumentError` instead of silently disabling notifications.
+
+For tests, custom transports, or apps that already wrap provider clients, pass an injected client:
+
+```ruby
+Exceptify.configure do |config|
+  config.add_notifier :webhook, {
+    url: "https://example.com/exception-webhook",
+    http_client: MyHTTPClient
+  }
+
+  config.add_notifier :sns, {
+    topic_arn: "arn:aws:sns:us-east-1:123456789012:exceptions",
+    client: Aws::SNS::Client.new(region: "us-east-1")
+  }
+end
+```
+
+Slack accepts `notifier:` for a prebuilt Slack client. Use `fail_silently: true` only as a temporary compatibility option while migrating old silent configurations.
 
 You can also register any object that responds to `#call(exception, options)`:
 
@@ -445,6 +467,21 @@ use Exceptify::Rack,
   ignore_cascade_pass: true
 ```
 
+Options passed directly to `Exceptify::Rack` are local to that middleware instance. To use one application-wide configuration, configure `Exceptify` once and mount the middleware without notifier options:
+
+```ruby
+require "exceptify"
+
+Exceptify.configure do |config|
+  config.add_notifier :email, {
+    sender_address: %("Exceptify" <notifier@example.com>),
+    exception_recipients: %w[exceptions@example.com]
+  }
+end
+
+use Exceptify::Rack
+```
+
 Sinatra users can also review the [example application](examples/sinatra).
 
 ## Maintenance
@@ -452,6 +489,7 @@ Sinatra users can also review the [example application](examples/sinatra).
 This repository is the current home for the `exceptify` gem. Maintenance focuses on modern Ruby and Rails support, clear documentation, and practical bug fixes around the `Exceptify` API.
 
 Issues and pull requests are welcome when they include enough context to reproduce the behavior.
+The current refactoring direction is tracked in [REFACTORING.md](REFACTORING.md).
 
 ## Development
 

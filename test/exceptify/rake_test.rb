@@ -7,6 +7,7 @@ require "exceptify/rake"
 
 class RakeTest < ActiveSupport::TestCase
   setup do
+    Rake::Task.clear
     Rake::Task.define_task :dependency_1 do
       nil # noop but could puts for debugging
     end
@@ -14,6 +15,10 @@ class RakeTest < ActiveSupport::TestCase
       raise "test exception"
     end
     @task = Rake::Task[:raise_exception]
+  end
+
+  teardown do
+    Rake::Task.clear
   end
 
   test "notifies of exception" do
@@ -33,6 +38,28 @@ class RakeTest < ActiveSupport::TestCase
     # The original error is re-raised
     assert_raises(RuntimeError) do
       @task.invoke
+    end
+  end
+
+  test "does not notify when task succeeds" do
+    Rake::Task.define_task :successful_task do
+      "ok"
+    end
+
+    Exceptify.expects(:notify_exception).never
+
+    Rake::Task[:successful_task].invoke
+  end
+
+  test "does not notify for system exit" do
+    Rake::Task.define_task :system_exit do
+      raise SystemExit.new(1)
+    end
+
+    Exceptify.expects(:notify_exception).never
+
+    assert_raises(SystemExit) do
+      Rake::Task[:system_exit].invoke
     end
   end
 end

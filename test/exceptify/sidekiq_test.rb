@@ -38,4 +38,17 @@ class SidekiqTest < ActiveSupport::TestCase
 
     server.handle_exception(exception, message)
   end
+
+  test "supports sidekiq error handler calls without config argument" do
+    message = {jid: "abc123"}
+    exception = RuntimeError.new("sidekiq failed")
+    handler = Sidekiq.default_configuration.error_handlers.last
+
+    Exceptify.expects(:notify_exception).with(
+      exception,
+      data: {sidekiq: message}
+    )
+
+    handler.call(exception, message, nil)
+  end
 end

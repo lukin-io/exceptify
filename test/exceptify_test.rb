@@ -260,8 +260,8 @@ class ExceptifyTest < ActiveSupport::TestCase
 
   test "should not call group_error! or send_notification? if error_grouping false" do
     exception = StandardError.new
-    Exceptify.expects(:group_error!).never
-    Exceptify.expects(:send_notification?).never
+    Exceptify.configuration.expects(:group_error!).never
+    Exceptify.configuration.expects(:send_notification?).never
 
     Exceptify.notify_exception(exception)
   end
@@ -270,8 +270,8 @@ class ExceptifyTest < ActiveSupport::TestCase
     Exceptify.error_grouping = true
 
     exception = StandardError.new
-    Exceptify.expects(:group_error!).once
-    Exceptify.expects(:send_notification?).once
+    Exceptify.configuration.expects(:group_error!).once.returns(1)
+    Exceptify.configuration.expects(:send_notification?).with(exception, 1).once.returns(true)
 
     Exceptify.notify_exception(exception)
   end
@@ -280,8 +280,8 @@ class ExceptifyTest < ActiveSupport::TestCase
     Exceptify.error_grouping = true
 
     exception = StandardError.new
-    Exceptify.expects(:group_error!).once.returns(1)
-    Exceptify.expects(:send_notification?).with(exception, 1).once.returns(false)
+    Exceptify.configuration.expects(:group_error!).once.returns(1)
+    Exceptify.configuration.expects(:send_notification?).with(exception, 1).once.returns(false)
 
     refute Exceptify.notify_exception(exception)
   end
@@ -290,8 +290,8 @@ class ExceptifyTest < ActiveSupport::TestCase
     Exceptify.error_grouping = true
 
     exception = StandardError.new
-    Exceptify.expects(:group_error!).once.returns(1)
-    Exceptify.expects(:send_notification?).with(exception, 1).once.returns(true)
+    Exceptify.configuration.expects(:group_error!).once.returns(1)
+    Exceptify.configuration.expects(:send_notification?).with(exception, 1).once.returns(true)
 
     assert Exceptify.notify_exception(exception)
   end

@@ -25,6 +25,26 @@ class TeamsNotifierTest < ActiveSupport::TestCase
     assert_equal "foo", header["activitySubtitle"]
   end
 
+  test "uses injected http client from constructor" do
+    http_client = FakeHTTParty.new
+    teams_notifier = Exceptify::TeamsNotifier.new(
+      webhook_url: "http://localhost:8000",
+      http_client: http_client
+    )
+
+    options = teams_notifier.call ArgumentError.new("foo")
+
+    assert_equal ["http://localhost:8000", options], http_client.requests.first
+  end
+
+  test "raises when webhook url is missing" do
+    error = assert_raises ArgumentError do
+      Exceptify::TeamsNotifier.new.call(ArgumentError.new("foo"))
+    end
+
+    assert_equal "You must provide 'webhook_url' parameter.", error.message
+  end
+
   test "should send notification with create gitlab issue link if specified" do
     options = {
       webhook_url: "http://localhost:8000",
@@ -59,8 +79,8 @@ class TeamsNotifierTest < ActiveSupport::TestCase
     options = teams_notifier.call ArgumentError.new("foo"), options
 
     assert options.key? :basic_auth
-    assert "clara", options[:basic_auth][:username]
-    assert "password", options[:basic_auth][:password]
+    assert_equal "clara", options[:basic_auth][:username]
+    assert_equal "password", options[:basic_auth][:password]
   end
 
   test "should use 'A' for exceptions count if :accumulated_errors_count option is nil" do
@@ -86,7 +106,14 @@ class TeamsNotifierTest < ActiveSupport::TestCase
 end
 
 class FakeHTTParty
-  def post(_url, options)
+  attr_reader :requests
+
+  def initialize
+    @requests = []
+  end
+
+  def post(url, options)
+    requests << [url, options]
     options
   end
 end

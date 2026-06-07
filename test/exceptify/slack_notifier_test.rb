@@ -23,6 +23,14 @@ class SlackNotifierTest < ActiveSupport::TestCase
     slack_notifier.call(@exception)
   end
 
+  test "success: uses injected slack notifier client" do
+    fake_slack = mock("slack")
+    fake_slack.expects(:ping).with("", fake_notification)
+
+    slack_notifier = Exceptify::SlackNotifier.new(notifier: fake_slack)
+    slack_notifier.call(@exception)
+  end
+
   test "should send a slack notification without backtrace info if properly configured" do
     options = {
       webhook_url: "http://slack.webhook.url"
@@ -108,10 +116,16 @@ class SlackNotifierTest < ActiveSupport::TestCase
     slack_notifier.call(@exception)
   end
 
-  test "shouldn't send a slack notification if webhook url is missing" do
-    options = {}
+  test "failure: raises if webhook url is missing" do
+    error = assert_raises ArgumentError do
+      Exceptify::SlackNotifier.new({})
+    end
 
-    slack_notifier = Exceptify::SlackNotifier.new(options)
+    assert_equal "You must provide 'webhook_url' option", error.message
+  end
+
+  test "edge: can explicitly fail silently when webhook url is missing" do
+    slack_notifier = Exceptify::SlackNotifier.new(fail_silently: true)
 
     assert_nil slack_notifier.notifier
     assert_nil slack_notifier.call(@exception)

@@ -2,6 +2,7 @@
 
 require "active_support/core_ext/time"
 require "action_dispatch"
+require "exceptify/notification"
 
 module Exceptify
   class Formatter
@@ -9,12 +10,15 @@ module Exceptify
 
     attr_reader :app_name
 
-    def initialize(exception, opts = {})
-      @exception = exception
-
-      @env = opts[:env]
-      @errors_count = opts[:accumulated_errors_count].to_i
-      @app_name = opts[:app_name] || rails_app_name
+    def initialize(exception_or_notification, opts = {})
+      @notification = if exception_or_notification.is_a?(Notification)
+        exception_or_notification
+      else
+        Notification.new(exception_or_notification, opts, backtrace_cleaner: self)
+      end
+      @exception = notification.exception
+      @errors_count = notification.options[:accumulated_errors_count].to_i
+      @app_name = notification.app_name
     end
 
     #
@@ -22,7 +26,7 @@ module Exceptify
     # :warning: Error occurred :warning:
     #
     def title
-      env = Rails.env if defined?(::Rails) && ::Rails.respond_to?(:env)
+      env = notification.env_name
 
       if env
         "⚠️ Error occurred in #{env} ⚠️"
@@ -60,7 +64,7 @@ module Exceptify
     # ```
     #
     def request_message
-      request = ActionDispatch::Request.new(env) if env
+      request = notification.request_context.request
       return unless request
 
       [
@@ -69,7 +73,7 @@ module Exceptify
         "* http_method : #{request.method}",
         "* ip_address : #{request.remote_ip}",
         "* parameters : #{request.filtered_parameters}",
-        "* timestamp : #{Time.current}",
+        "* timestamp : #{notification.timestamp}",
         "```"
       ].join("\n")
     end
@@ -84,9 +88,9 @@ module Exceptify
     # ```
     #
     def backtrace_message
-      backtrace = exception.backtrace ? clean_backtrace(exception) : nil
+      backtrace = notification.backtrace
 
-      return unless backtrace
+      return if backtrace.empty?
 
       text = []
 
@@ -101,25 +105,15 @@ module Exceptify
     # home#index
     #
     def controller_and_action
-      "#{controller.controller_name}##{controller.action_name}" if controller
+      notification.controller_and_action
     end
 
     private
 
-    attr_reader :exception, :env, :errors_count
-
-    def rails_app_name
-      return unless defined?(::Rails) && ::Rails.respond_to?(:application)
-
-      if Rails::VERSION::MAJOR >= 6
-        Rails.application.class.module_parent_name.underscore
-      else
-        Rails.application.class.parent_name.underscore
-      end
-    end
+    attr_reader :exception, :errors_count, :notification
 
     def controller
-      env["action_controller.instance"] if env
+      notification.controller
     end
   end
 end

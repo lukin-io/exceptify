@@ -7,6 +7,7 @@ require "action_controller"
 class EmailNotifierTest < ActiveSupport::TestCase
   setup do
     Time.stubs(:current).returns("Sat, 20 Apr 2013 20:58:55 UTC +00:00")
+    ActionMailer::Base.deliveries.clear
 
     @exception = ZeroDivisionError.new("divided by 0")
     @exception.set_backtrace(["test/exceptify/email_notifier_test.rb:20"])
@@ -26,7 +27,7 @@ class EmailNotifierTest < ActiveSupport::TestCase
       }
     )
 
-    @mail = @email_notifier.call(
+    @mail = @email_notifier.create_email(
       @exception,
       data: {job: "DivideWorkerJob", payload: "1/0", message: "My Custom Message"}
     )
@@ -35,6 +36,11 @@ class EmailNotifierTest < ActiveSupport::TestCase
   test "should call pre/post_callback if specified" do
     assert @pre_callback_called
     assert @post_callback_called
+  end
+
+  test "create_email builds background email without delivery" do
+    assert_empty ActionMailer::Base.deliveries
+    assert_respond_to @mail, :deliver_now
   end
 
   test "sends mail with correct content" do
@@ -89,9 +95,10 @@ class EmailNotifierTest < ActiveSupport::TestCase
       raise ArgumentError
     rescue => e
       @vowel_exception = e
-      @vowel_mail = @email_notifier.call(@vowel_exception)
+      @vowel_mail = @email_notifier.create_email(@vowel_exception)
     end
 
+    assert_empty ActionMailer::Base.deliveries
     assert_includes @vowel_mail.encoded, "An ArgumentError occurred in background at #{Time.current}"
   end
 
@@ -101,7 +108,7 @@ class EmailNotifierTest < ActiveSupport::TestCase
     rescue => e
       @ignored_exception = e
       unless Exceptify.ignored_exceptions.include?(@ignored_exception.class.name)
-        ignored_mail = @email_notifier.call(@ignored_exception)
+        ignored_mail = @email_notifier.create_email(@ignored_exception)
       end
     end
 
@@ -115,7 +122,7 @@ class EmailNotifierTest < ActiveSupport::TestCase
       exception_recipients: %w[dummyexceptions@example.com]
     )
 
-    mail = email_notifier.call(
+    mail = email_notifier.create_email(
       @exception,
       env: {
         "REQUEST_METHOD" => "GET",
@@ -124,6 +131,7 @@ class EmailNotifierTest < ActiveSupport::TestCase
       }
     )
 
+    assert_empty ActionMailer::Base.deliveries
     assert_match(/invalid_encoding\s+: R__sum__/, mail.encoded)
   end
 
@@ -163,10 +171,11 @@ class EmailNotifierTest < ActiveSupport::TestCase
       delivery_method: :test
     )
 
-    mail = email_notifier.call(@exception)
+    mail = email_notifier.create_email(@exception)
     assert_equal %w[first@example.com], mail.to
-    mail = email_notifier.call(@exception)
+    mail = email_notifier.create_email(@exception)
     assert_equal %w[second@example.com], mail.to
+    assert_empty ActionMailer::Base.deliveries
   end
 
   test "should prepend accumulated_errors_count in email subject if accumulated_errors_count larger than 1" do
@@ -177,7 +186,8 @@ class EmailNotifierTest < ActiveSupport::TestCase
       delivery_method: :test
     )
 
-    mail = email_notifier.call(@exception, accumulated_errors_count: 3)
+    mail = email_notifier.create_email(@exception, accumulated_errors_count: 3)
+    assert_empty ActionMailer::Base.deliveries
     assert mail.subject.start_with?("[Dummy ERROR] (3 times) (ZeroDivisionError)")
   end
 
@@ -188,8 +198,9 @@ class EmailNotifierTest < ActiveSupport::TestCase
       verbose_subject: false
     )
 
-    mail = email_notifier.call(@exception)
+    mail = email_notifier.create_email(@exception)
 
+    assert_empty ActionMailer::Base.deliveries
     assert_equal "[ERROR]  (ZeroDivisionError)", mail.subject
   end
 
@@ -200,9 +211,130 @@ class EmailNotifierTest < ActiveSupport::TestCase
       email_format: :html
     )
 
-    mail = email_notifier.call(@exception)
+    mail = email_notifier.create_email(@exception)
 
+    assert_empty ActionMailer::Base.deliveries
     assert mail.multipart?
+  end
+end
+
+class EmailNotifierSubjectTest < ActiveSupport::TestCase
+  setup do
+    ActionMailer::Base.deliveries.clear
+  end
+
+  test "normalizes digits in subject without delivery" do
+    exception = RuntimeError.new("User 123 failed at line 456")
+    notifier = build_notifier(normalize_subject: true)
+
+    mail = notifier.create_email(exception)
+
+    assert_equal '[ERROR]  (RuntimeError) "User N failed at line N"', mail.subject
+    assert_empty ActionMailer::Base.deliveries
+  end
+
+  test "truncates long subject without delivery" do
+    exception = RuntimeError.new("x" * 200)
+    notifier = build_notifier
+
+    mail = notifier.create_email(exception)
+
+    assert_equal 123, mail.subject.length
+    assert mail.subject.end_with?("...")
+    assert_empty ActionMailer::Base.deliveries
+  end
+
+  test "uses env options when building request email subject" do
+    exception = RuntimeError.new("failed")
+    env = request_env.merge("exceptify.options" => {email_prefix: "[ENV] "})
+    notifier = build_notifier
+
+    mail = notifier.create_email(exception, env: env)
+
+    assert_equal '[ENV] home#index (RuntimeError) "failed"', mail.subject
+    assert_empty ActionMailer::Base.deliveries
+  end
+
+  private
+
+  def build_notifier(options = {})
+    Exceptify::EmailNotifier.new({
+      sender_address: %("Dummy Notifier" <dummynotifier@example.com>),
+      exception_recipients: %w[dummyexceptions@example.com]
+    }.merge(options))
+  end
+
+  def request_env
+    Rack::MockRequest.env_for(
+      "/",
+      "action_controller.instance" => controller,
+      "rack.session.options" => {}
+    )
+  end
+
+  def controller
+    @controller ||= begin
+      controller = EmailNotifierWithEnvTest::HomeController.new
+      controller.process(:index)
+      controller
+    end
+  end
+end
+
+class EmailNotifierPayloadTest < ActiveSupport::TestCase
+  setup do
+    Time.stubs(:current).returns("Sat, 20 Apr 2013 20:58:55 UTC +00:00")
+    ActionMailer::Base.deliveries.clear
+  end
+
+  test "merges request exception data and explicit data without delivery" do
+    exception = RuntimeError.new("failed")
+    exception.set_backtrace(["app/jobs/import.rb:10"])
+    env = request_env.merge(
+      "exceptify.exception_data" => {account_id: 7}
+    )
+    notifier = Exceptify::EmailNotifier.new(
+      sender_address: %("Dummy Notifier" <dummynotifier@example.com>),
+      exception_recipients: %w[dummyexceptions@example.com],
+      sections: []
+    )
+
+    mail = notifier.create_email(exception, env: env, data: {job: "Import"})
+
+    assert_includes mail.decode_body, '* data: {account_id: 7, job: "Import"}'
+    assert_empty ActionMailer::Base.deliveries
+  end
+
+  test "does not add data section when request and explicit data are empty" do
+    exception = RuntimeError.new("failed")
+    notifier = Exceptify::EmailNotifier.new(
+      sender_address: %("Dummy Notifier" <dummynotifier@example.com>),
+      exception_recipients: %w[dummyexceptions@example.com],
+      background_sections: %w[backtrace]
+    )
+
+    mail = notifier.create_email(exception)
+
+    refute_includes mail.decode_body, "Data:"
+    assert_empty ActionMailer::Base.deliveries
+  end
+
+  private
+
+  def request_env
+    Rack::MockRequest.env_for(
+      "/",
+      "action_controller.instance" => controller,
+      "rack.session.options" => {}
+    )
+  end
+
+  def controller
+    @controller ||= begin
+      controller = EmailNotifierWithEnvTest::HomeController.new
+      controller.process(:index)
+      controller
+    end
   end
 end
 
@@ -214,6 +346,7 @@ class EmailNotifierWithEnvTest < ActiveSupport::TestCase
 
   setup do
     Time.stubs(:current).returns("Sat, 20 Apr 2013 20:58:55 UTC +00:00")
+    ActionMailer::Base.deliveries.clear
 
     @exception = ZeroDivisionError.new("divided by 0")
     @exception.set_backtrace(["test/exceptify/email_notifier_test.rb:20"])
@@ -246,7 +379,12 @@ class EmailNotifierWithEnvTest < ActiveSupport::TestCase
       :params => {id: "foo", secret: "secret"}
     )
 
-    @mail = @email_notifier.call(@exception, env: @test_env, data: {message: "My Custom Message"})
+    @mail = @email_notifier.create_email(@exception, env: @test_env, data: {message: "My Custom Message"})
+  end
+
+  test "create_email builds request email without delivery" do
+    assert_empty ActionMailer::Base.deliveries
+    assert_respond_to @mail, :deliver_now
   end
 
   test "sends mail with correct content" do
@@ -335,8 +473,9 @@ class EmailNotifierWithEnvTest < ActiveSupport::TestCase
       include_controller_and_action_names_in_subject: false
     )
 
-    mail = email_notifier.call(@exception, env: @test_env)
+    mail = email_notifier.create_email(@exception, env: @test_env)
 
+    assert_empty ActionMailer::Base.deliveries
     assert_equal "[ERROR]  (ZeroDivisionError) \"divided by 0\"", mail.subject
   end
 end

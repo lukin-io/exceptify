@@ -24,6 +24,14 @@ class DatadogNotifierTest < ActiveSupport::TestCase
     @notifier.call(@exception)
   end
 
+  test "raises explicit error when client is missing" do
+    error = assert_raises ArgumentError do
+      Exceptify::DatadogNotifier.new({})
+    end
+
+    assert_equal "You must provide 'client' option", error.message
+  end
+
   test "should include exception class in event title" do
     event = @notifier.datadog_event(@exception)
     assert_includes event.msg_title, "FakeException"
@@ -77,6 +85,7 @@ class DatadogNotifierTest < ActiveSupport::TestCase
     assert_includes event.msg_text, "GET"
     assert_includes event.msg_text, "127.0.0.1"
     assert_includes event.msg_text, {"param 1" => "value 1", "param 2" => "value 2"}.to_s
+    assert_includes event.msg_text, "**Process:** #{Process.pid}"
   end
 
   test "should include tags in event" do

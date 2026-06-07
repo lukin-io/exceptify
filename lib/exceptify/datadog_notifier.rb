@@ -9,7 +9,9 @@ module Exceptify
 
     def initialize(options)
       super
-      @client = options.fetch(:client)
+      @client = options[:client]
+      raise ArgumentError, "You must provide 'client' option" unless @client
+
       @default_options = options
     end
 
@@ -35,23 +37,25 @@ module Exceptify
       ALERT_TYPE = "error"
 
       attr_reader :exception,
+        :notification,
         :options
 
       def initialize(exception, options)
-        @exception = exception
+        @notification = Notification.new(exception, options, backtrace_cleaner: self)
+        @exception = notification.exception
         @options = options
       end
 
       def request
-        @request ||= ActionDispatch::Request.new(options[:env]) if options[:env]
+        @request ||= notification.request_context.request
       end
 
       def controller
-        @controller ||= options[:env] && options[:env]["action_controller.instance"]
+        @controller ||= notification.controller
       end
 
       def backtrace
-        @backtrace ||= exception.backtrace ? clean_backtrace(exception) : []
+        @backtrace ||= notification.backtrace
       end
 
       def tags
@@ -105,10 +109,10 @@ module Exceptify
         text << formatted_key_value("HTTP Method", request.request_method)
         text << formatted_key_value("IP Address", request.remote_ip)
         text << formatted_key_value("Parameters", request.filtered_parameters.inspect)
-        text << formatted_key_value("Timestamp", Time.current)
-        text << formatted_key_value("Server", Socket.gethostname)
+        text << formatted_key_value("Timestamp", notification.timestamp)
+        text << formatted_key_value("Server", notification.hostname)
         text << formatted_key_value("Rails root", Rails.root) if defined?(Rails) && Rails.respond_to?(:root)
-        text << formatted_key_value("Process", $PROCESS_ID)
+        text << formatted_key_value("Process", Process.pid)
         text << "___"
         text.join("\n")
       end

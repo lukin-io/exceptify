@@ -19,9 +19,11 @@ module Exceptify
     attr_accessor :httparty
 
     def initialize(options = {})
-      super
+      options = options.dup
+      @httparty = options.delete(:http_client) || HTTParty
+      super()
+      self.base_options = options
       @default_options = options
-      @httparty = HTTParty
     end
 
     def call(exception, options = {})
