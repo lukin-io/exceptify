@@ -27,6 +27,15 @@ class ExceptifyRequirePathsTest < ActiveSupport::TestCase
     RUBY
   end
 
+  test "loads the solid queue require path" do
+    assert_subprocess_success <<~RUBY
+      require "exceptify/solid_queue"
+
+      abort "missing Exceptify::SolidQueue" unless Exceptify::SolidQueue
+      abort "require exceptify/solid_queue should not load Rails" if defined?(Rails)
+    RUBY
+  end
+
   test "loads the version require path" do
     assert_subprocess_success <<~RUBY
       require "exceptify/version"

@@ -12,6 +12,9 @@ module Exceptify
       class_option :sidekiq,
         type: :boolean,
         desc: "Add support for sending notifications when errors occur in Sidekiq jobs."
+      class_option :solid_queue,
+        type: :boolean,
+        desc: "Add support for sending notifications when errors occur in Solid Queue jobs."
 
       def copy_initializer
         template "exceptify.rb.erb", "config/initializers/exceptify.rb"
