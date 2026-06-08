@@ -414,7 +414,7 @@ That reports unhandled exceptions from rake tasks.
 
 For `rails runner`, require the Rails integration from `config/application.rb` as shown in [Rails Runner Support](#rails-runner-support).
 
-### Sidekiq and Resque
+### Sidekiq, Resque, and Solid Queue
 
 Generate an initializer with the integration you need:
 
@@ -427,6 +427,14 @@ or:
 ```bash
 bundle exec rails generate exceptify:install --resque
 ```
+
+or:
+
+```bash
+bundle exec rails generate exceptify:install --solid-queue
+```
+
+The Solid Queue integration hooks into Active Job failure notifications and reports unhandled exceptions for jobs using the `solid_queue` adapter. It preserves Active Job failure behavior, so failed jobs still end up in Solid Queue's failed executions table and `retry_on` or `discard_on` handlers still run normally.
 
 ### Manual Job Reporting
 

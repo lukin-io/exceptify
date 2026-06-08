@@ -12,4 +12,5 @@ First maintained release line under <tt>lukin-io/exceptify</tt>.
 * Add dependency injection support for notifier clients/transports.
 * Keep Rack middleware options isolated per middleware instance.
 * Guard Rails runner hook installation from duplicate callbacks.
+* Add Solid Queue support for reporting unhandled Active Job failures.
 * Expand specs for success, failure, and edge/null/boundary behavior across the refactored core and supported notifiers.

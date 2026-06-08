@@ -2,7 +2,8 @@
 require "exceptify/rails"
 require "exceptify/rake"
 <% if options.sidekiq? %>
-require "exceptify/sidekiq"<% end %><% if options.resque? %>
+require "exceptify/sidekiq"<% end %><% if options.solid_queue? %>
+require "exceptify/solid_queue"<% end %><% if options.resque? %>
 require "resque/failure/multiple"
 require "resque/failure/redis"
 require "exceptify/resque"

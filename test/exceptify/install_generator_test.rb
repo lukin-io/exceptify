@@ -29,6 +29,14 @@ class ExceptifyInstallGeneratorTest < Rails::Generators::TestCase
     end
   end
 
+  test "adds solid queue support when requested" do
+    run_generator ["--solid-queue"]
+
+    assert_file "config/initializers/exceptify.rb" do |initializer|
+      assert_match 'require "exceptify/solid_queue"', initializer
+    end
+  end
+
   test "adds resque support when requested" do
     run_generator ["--resque"]
 
