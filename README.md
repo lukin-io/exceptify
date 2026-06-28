@@ -527,6 +527,23 @@ bundle exec rake build
 
 Pull requests and issues are welcome. Please read the [Contributing Guide](CONTRIBUTING.md) and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Release Checklist
+
+After publishing a version to RubyGems.org, commit and tag the exact repo state
+that produced the gem. RubyGems.org versions are immutable, so `1.0.0` should
+point to the code and gemspec that were pushed.
+
+```bash
+git add exceptify.gemspec Gemfile.lock .github/workflows/gem-push.yml RELEASING.md
+git commit -m "Release 1.0.0"
+git tag v1.0.0
+git push origin main
+git push origin v1.0.0
+```
+
+Do not add `exceptify-1.0.0.gem` unless gem build artifacts are intentionally
+stored in git.
+
 ## License
 
 Released under the [MIT license](MIT-LICENSE).

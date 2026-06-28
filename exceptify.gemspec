@@ -30,19 +30,19 @@ Gem::Specification.new do |s|
 
   s.add_dependency("actionmailer", ">= 7.1", "< 9")
   s.add_dependency("activesupport", ">= 7.1", "< 9")
-  s.add_dependency("cgi")
+  s.add_dependency("cgi", "~> 0.5")
 
   s.add_development_dependency "aws-sdk-sns", "~> 1"
-  s.add_development_dependency "dogapi", ">= 1.23.0"
+  s.add_development_dependency "dogapi", ">= 1.23.0", "< 2"
   s.add_development_dependency "httparty", "~> 0.10.2"
-  s.add_development_dependency "mocha", ">= 0.13.0"
+  s.add_development_dependency "mocha", ">= 2.7.1", "< 4"
   s.add_development_dependency "mock_redis", "~> 0.19.0"
-  s.add_development_dependency "net-smtp"
-  s.add_development_dependency "ostruct"
+  s.add_development_dependency "net-smtp", "~> 0.5"
+  s.add_development_dependency "ostruct", "~> 0.6"
   s.add_development_dependency "rails", ">= 8.0.2", "< 9"
   s.add_development_dependency "resque", "~> 1.8.0"
-  s.add_development_dependency "sidekiq", ">= 5.0.4"
-  s.add_development_dependency "slack-notifier", ">= 1.0.0"
-  s.add_development_dependency "standard"
+  s.add_development_dependency "sidekiq", ">= 7.1.0", "< 9"
+  s.add_development_dependency "slack-notifier", ">= 1.0.0", "< 3"
+  s.add_development_dependency "standard", "~> 1.54"
   s.add_development_dependency "timecop", "~> 0.9.0"
 end

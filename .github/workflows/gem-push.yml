@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Ruby from .ruby-version
         uses: ruby/setup-ruby@v1
@@ -49,12 +49,19 @@ jobs:
     needs: verify
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    environment: release
     permissions:
-      contents: read
+      contents: write
+      id-token: write
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Check out release commit on main
+        run: git checkout -B main "${GITHUB_SHA}"
 
       - name: Set up Ruby from .ruby-version
         uses: ruby/setup-ruby@v1
@@ -80,15 +87,4 @@ jobs:
           OWNER: ${{ github.repository_owner }}
 
       - name: Publish to RubyGems
-        run: |
-          version="$(ruby -Ilib -rexceptify/version -e 'puts Exceptify::VERSION')"
-          gem_path="pkg/exceptify-${version}.gem"
-
-          mkdir -p "${HOME}/.gem"
-          touch "${HOME}/.gem/credentials"
-          chmod 0600 "${HOME}/.gem/credentials"
-          printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > "${HOME}/.gem/credentials"
-
-          gem push "${gem_path}"
-        env:
-          GEM_HOST_API_KEY: "${{ secrets.RUBYGEMS_AUTH_TOKEN }}"
+        uses: rubygems/release-gem@v1

@@ -4,7 +4,7 @@ PATH
     exceptify (1.0.0)
       actionmailer (>= 7.1, < 9)
       activesupport (>= 7.1, < 9)
-      cgi
+      cgi (~> 0.5)
 
 GEM
   remote: https://rubygems.org/
@@ -321,18 +321,18 @@ PLATFORMS
 
 DEPENDENCIES
   aws-sdk-sns (~> 1)
-  dogapi (>= 1.23.0)
+  dogapi (>= 1.23.0, < 2)
   exceptify!
   httparty (~> 0.10.2)
-  mocha (>= 0.13.0)
+  mocha (>= 2.7.1, < 4)
   mock_redis (~> 0.19.0)
-  net-smtp
-  ostruct
+  net-smtp (~> 0.5)
+  ostruct (~> 0.6)
   rails (>= 8.0.2, < 9)
   resque (~> 1.8.0)
-  sidekiq (>= 5.0.4)
-  slack-notifier (>= 1.0.0)
-  standard
+  sidekiq (>= 7.1.0, < 9)
+  slack-notifier (>= 1.0.0, < 3)
+  standard (~> 1.54)
   timecop (~> 0.9.0)
 
 BUNDLED WITH
